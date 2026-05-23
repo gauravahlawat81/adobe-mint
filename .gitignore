@@ -48,3 +48,8 @@ Adobe Mint/android/local.properties
 
 # App config with secrets
 Adobe Mint/src/config.ts
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
