@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Adobe Mint — Screen Previews</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red: #FA0F00;
+    --dark: #1D1D1D;
+    --dark-gray: #4A4A4A;
+    --mid-gray: #6E6E6E;
+    --light-gray: #C8C8C8;
+    --off-white: #F5F5F5;
+    --white: #FFFFFF;
+    --border: #E8E8E8;
+    --success: #2D9D78;
+    --warning: #E68619;
+    --error: #E34850;
+    --info: #1473E6;
+  }
+
+  body {
+    background: #F0F0F0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    background: var(--dark);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  .page-logo {
+    width: 36px; height: 36px;
+    background: var(--red);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px; color: #fff;
+  }
+  .page-title { color: #fff; font-size: 22px; font-weight: 700; }
+  .page-sub { color: rgba(255,255,255,0.45); font-size: 14px; margin-left: auto; }
+
+  /* ── Nav tabs ── */
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 24px 40px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 8px 20px;
+    border-radius: 100px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mid-gray);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s;
+  }
+  .tab-btn.active, .tab-btn:hover {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  /* ── Screens grid ── */
+  .screens-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    padding: 32px 40px 60px;
+    justify-content: flex-start;
+  }
+
+  /* ── Phone shell ── */
+  .phone-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .phone-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dark);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .phone-shell {
+    width: 320px;
+    height: 640px;
+    border-radius: 44px;
+    background: #1a1a1a;
+    padding: 14px;
+    box-shadow:
+      0 0 0 1px #333,
+      0 20px 60px rgba(0,0,0,0.35),
+      0 4px 16px rgba(0,0,0,0.2);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone-notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 100px; height: 28px;
+    background: #1a1a1a;
+    border-radius: 0 0 20px 20px;
+    z-index: 10;
+  }
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 32px;
+    background: var(--white);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    height: 44px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 20px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dark);
+    flex-shrink: 0;
+  }
+  .status-bar.light { color: #fff; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+
+  /* ── Scrollable content ── */
+  .screen-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .screen-content::-webkit-scrollbar { display: none; }
+
+  /* ══════════════════════════════════════
+     SCREEN 1 — ONBOARDING
+  ══════════════════════════════════════ */
+  .onboarding {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0 22px;
+    background: #fff;
+  }
+  .ob-logo-row {
+    display: flex; align-items: center; gap: 10px;
+    padding-top: 56px; padding-bottom: 28px;
+  }
+  .ob-logomark {
+    width: 38px; height: 38px; background: var(--red);
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 900; font-size: 20px; color: #fff;
+  }
+  .ob-adobe { font-size: 10px; font-weight: 700; color: var(--mid-gray); letter-spacing: 2px; line-height: 1; }
+  .ob-mint { font-size: 19px; font-weight: 900; color: var(--dark); line-height: 1.1; }
+  .ob-hero { margin-bottom: 24px; }
+  .ob-title { font-size: 38px; font-weight: 900; color: var(--dark); line-height: 1.15; margin-bottom: 10px; }
+  .ob-title span { color: var(--red); }
+  .ob-sub { font-size: 14px; color: var(--mid-gray); line-height: 1.6; }
+  .ob-features { flex: 1; display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+  .ob-feature { display: flex; gap: 12px; align-items: flex-start; }
+  .ob-feat-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #FFF0EF; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; flex-shrink: 0;
+  }
+  .ob-feat-title { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 2px; }
+  .ob-feat-desc { font-size: 11px; color: var(--mid-gray); line-height: 1.5; }
+  .ob-cta { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+  .btn-primary {
+    width: 100%; height: 50px; background: var(--red);
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff; cursor: pointer;
+    border: none;
+  }
+  .btn-secondary {
+    width: 100%; height: 50px;
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--dark); cursor: pointer;
+    border: 1.5px solid var(--border); background: #fff; gap: 8px;
+  }
+  .adobe-a {
+    width: 22px; height: 22px; background: var(--red);
+    border-radius: 4px; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 900; color: #fff;
+  }
+  .ob-legal { font-size: 10px; color: var(--light-gray); text-align: center; padding-bottom: 8px; }
+
+  /* ══════════════════════════════════════
+     SCREEN 2 — HOME / CAMERA ROLL
+  ══════════════════════════════════════ */
+  .home {
+    display: flex; flex-direction: column; height: 100%; background: #fff;
+  }
+  .home-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 44px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .home-logo-row { display: flex; align-items: center; gap: 8px; }
+  .home-logomark {
+    width: 30px; height: 30px; background: var(--red);
+    border-radius: 7px; display: flex; align-items: center;
+    justify-content: center; font-weight: 900; font-size: 16px; color: #fff;
+  }
+  .home-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+  .subheader {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px 8px;
+  }
+  .subheader-title { font-size: 19px; font-weight: 700; color: var(--dark); }
+  .subheader-count { font-size: 12px; color: var(--mid-gray); font-weight: 500; }
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 0 2px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .photo-cell {
+    aspect-ratio: 1;
+    background: var(--off-white);
+    position: relative;
+    overflow: hidden;
+  }
+  .photo-cell img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-cell.selected::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(250,15,0,0.22);
+  }
+  .photo-check {
+    position: absolute; top: 4px; right: 4px;
+    width: 20px; height: 20px; background: var(--red);
+    border-radius: 50%; border: 1.5px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff; font-weight: 700; z-index: 2;
+  }
+  .mint-bar {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.07);
+  }
+  .mint-bar-count { font-size: 14px; font-weight: 600; color: var(--dark); }
+  .btn-mint {
+    background: var(--red); color: #fff;
+    padding: 9px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; border: none; cursor: pointer;
+  }
+
+  /* ══════════════════════════════════════
+     SCREEN 3 — TAGGING
+  ══════════════════════════════════════ */
+  .tagging { display: flex; flex-direction: column; height: 100%; background: #fff; }
+  .tagging-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 44px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .back-btn { font-size: 22px; color: var(--dark); width: 32px; }
+  .tagging-title-wrap { text-align: center; }
+  .tagging-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+  .tagging-sub { font-size: 11px; color: var(--mid-gray); margin-top: 1px; }
+  .upload-all { font-size: 14px; font-weight: 600; color: var(--red); }
+  .tag-content { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
+  .photo-preview-row { display: flex; gap: 10px; }
+  .tag-photo {
+    width: 110px; height: 110px; border-radius: 12px;
+    background: var(--off-white); object-fit: cover; flex-shrink: 0;
+  }
+  .ai-badge {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+    justify-content: center;
+  }
+  .ai-status-row { display: flex; align-items: center; gap: 6px; }
+  .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+  .ai-status-text { font-size: 12px; font-weight: 600; color: var(--success); }
+  .cat-badge {
+    display: inline-flex;
+    background: #EBF3FE; color: var(--info);
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 11px; font-weight: 600; width: fit-content;
+  }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 10px; font-weight: 700; color: var(--mid-gray);
+    text-transform: uppercase; letter-spacing: 0.7px;
+  }
+  .field-input {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 13px; color: var(--dark);
+    background: #fff; width: 100%; font-family: inherit;
+  }
+  .field-textarea {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 12px; color: var(--dark);
+    background: #fff; width: 100%; min-height: 60px;
+    resize: none; font-family: inherit; line-height: 1.5;
+  }
+  .tags-area {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px; display: flex; flex-wrap: wrap; gap: 5px;
+    min-height: 52px;
+  }
+  .tag-chip {
+    display: flex; align-items: center; gap: 3px;
+    background: var(--off-white); border: 1px solid var(--border);
+    border-radius: 100px; padding: 3px 9px;
+    font-size: 11px; color: var(--dark-gray); font-weight: 500;
+  }
+  .tag-chip-x { font-size: 13px; color: var(--mid-gray); line-height: 1; cursor: pointer; }
+  .upload-btn {
+    margin: 4px 0 12px;
+    width: 100%; height: 50px; background: var(--red);
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff; cursor: pointer;
+    border: none; flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════
+     SCREEN 4 — UPLOAD SUCCESS
+  ══════════════════════════════════════ */
+  .success-screen {
+    display: flex; flex-direction: column; height: 100%;
+    background: #fff; align-items: center; padding: 0 24px;
+  }
+  .success-icon { font-size: 72px; margin-top: 60px; margin-bottom: 20px; }
+  .success-title { font-size: 26px; font-weight: 900; color: var(--dark); text-align: center; margin-bottom: 10px; }
+  .success-sub { font-size: 13px; color: var(--mid-gray); text-align: center; line-height: 1.6; margin-bottom: 24px; }
+  .timeline-card {
+    width: 100%;
+    background: var(--off-white); border-radius: 16px;
+    padding: 14px 16px; border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 0;
+    margin-bottom: 24px;
+  }
+  .tl-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .tl-row:last-child { border-bottom: none; }
+  .tl-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #fff; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .tl-icon.active { background: #FFF0EF; border-color: #FFF0EF; }
+  .tl-label { font-size: 13px; font-weight: 600; color: var(--dark); }
+  .tl-detail { font-size: 11px; color: var(--mid-gray); margin-top: 1px; }
+  .success-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+  /* ══════════════════════════════════════
+     SCREEN 5 — EARNINGS
+  ══════════════════════════════════════ */
+  .earnings { display: flex; flex-direction: column; height: 100%; background: #fff; }
+  .earnings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 44px 16px 10px;
+  }
+  .earnings-title { font-size: 22px; font-weight: 800; color: var(--dark); }
+  .payout-btn {
+    display: flex; align-items: center; gap: 5px;
+    border: 1.5px solid var(--red); border-radius: 100px;
+    padding: 5px 12px; font-size: 13px; font-weight: 600; color: var(--red);
+  }
+  .hero-card {
+    margin: 0 16px 14px;
+    background: var(--dark); border-radius: 20px;
+    padding: 20px; text-align: center;
+  }
+  .hero-label { font-size: 10px; color: rgba(255,255,255,0.45); font-weight: 700; letter-spacing: 1.5px; margin-bottom: 6px; }
+  .hero-amount { font-size: 40px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+  .growth-row { display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .growth-text { font-size: 13px; font-weight: 600; color: var(--success); }
+  .stats-row { display: flex; gap: 8px; padding: 0 16px 14px; }
+  .stat-card {
+    flex: 1; background: var(--off-white); border-radius: 12px;
+    padding: 12px 10px; border: 1px solid var(--border);
+  }
+  .stat-card.accent { background: var(--red); border-color: var(--red); }
+  .stat-l { font-size: 9px; font-weight: 700; color: var(--mid-gray); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card.accent .stat-l { color: rgba(255,255,255,0.65); }
+  .stat-v { font-size: 18px; font-weight: 800; color: var(--dark); }
+  .stat-card.accent .stat-v { color: #fff; }
+  .stat-s { font-size: 9px; color: var(--mid-gray); margin-top: 2px; }
+  .stat-card.accent .stat-s { color: rgba(255,255,255,0.6); }
+
+  /* bar chart */
+  .chart-section { padding: 0 16px 14px; }
+  .chart-label { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 12px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+  .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar { width: 100%; background: var(--border); border-radius: 4px 4px 0 0; }
+  .bar.active { background: var(--red); }
+  .bar-lbl { font-size: 9px; color: var(--mid-gray); font-weight: 600; }
+  .bar-lbl.active { color: var(--red); font-weight: 700; }
+
+  /* submission list */
+  .sub-list { padding: 0 16px; flex: 1; overflow: hidden; }
+  .sub-list-label { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+  .sub-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .sub-thumb {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: var(--off-white); object-fit: cover; flex-shrink: 0;
+  }
+  .sub-info { flex: 1; min-width: 0; }
+  .sub-title { font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub-meta { font-size: 10px; color: var(--mid-gray); margin-top: 2px; }
+  .sub-earn { font-size: 10px; color: var(--success); font-weight: 600; margin-top: 1px; }
+  .status-badge {
+    padding: 3px 8px; border-radius: 100px;
+    font-size: 10px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  }
+  .s-approved { background: #E8F8F3; color: var(--success); }
+  .s-reviewing { background: #FDF3E4; color: var(--warning); }
+  .s-pending { background: #EBF3FE; color: var(--info); }
+  .s-rejected { background: #FEECEC; color: var(--error); }
+
+  /* tab bar */
+  .tab-bar {
+    display: flex; height: 54px;
+    border-top: 1px solid var(--border); background: #fff;
+    flex-shrink: 0;
+  }
+  .tab-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+  }
+  .tab-icon { font-size: 22px; line-height: 1; }
+  .tab-lbl { font-size: 10px; font-weight: 600; color: var(--mid-gray); }
+  .tab-item.active .tab-icon, .tab-item.active .tab-lbl { color: var(--red); }
+
+  /* ══════════════════════════════════════
+     SCREEN 6 — PROFILE
+  ══════════════════════════════════════ */
+  .profile { display: flex; flex-direction: column; height: 100%; background: #fff; overflow: hidden; }
+  .profile-header { padding: 44px 16px 10px; }
+  .profile-title { font-size: 22px; font-weight: 800; color: var(--dark); }
+  .profile-card {
+    margin: 0 16px 12px;
+    background: var(--off-white); border-radius: 16px; padding: 14px;
+    border: 1px solid var(--border); display: flex; gap: 12px; align-items: center;
+  }
+  .p-avatar {
+    width: 56px; height: 56px; border-radius: 28px;
+    background: var(--red); display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .p-name { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .p-email { font-size: 11px; color: var(--mid-gray); margin-top: 2px; }
+  .p-badges { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .p-level {
+    background: #FFF0EF; color: var(--red);
+    padding: 2px 9px; border-radius: 100px;
+    font-size: 10px; font-weight: 700;
+  }
+  .p-since { font-size: 10px; color: var(--mid-gray); }
+  .profile-stats { display: flex; gap: 8px; padding: 0 16px 12px; }
+  .p-stat {
+    flex: 1; background: var(--off-white); border-radius: 12px;
+    padding: 10px 8px; border: 1px solid var(--border); text-align: center;
+  }
+  .p-stat-v { font-size: 17px; font-weight: 800; color: var(--dark); }
+  .p-stat-l { font-size: 9px; color: var(--mid-gray); margin-top: 2px; }
+  .settings { padding: 0 16px; overflow: hidden; }
+  .settings-label { font-size: 10px; font-weight: 700; color: var(--mid-gray); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .settings-group { background: var(--off-white); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+  .setting-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: #fff; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .setting-lbl { flex: 1; font-size: 13px; font-weight: 500; color: var(--dark); }
+  .setting-val { font-size: 11px; color: var(--mid-gray); }
+  .setting-chevron { font-size: 14px; color: var(--light-gray); }
+  .toggle {
+    width: 36px; height: 20px; background: var(--red);
+    border-radius: 100px; position: relative;
+  }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; background: #fff;
+    border-radius: 50%; top: 2px; right: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  /* ── "All screens" grid layout ── */
+  #view-all .screens-grid {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  /* hidden by default */
+  .screen-panel { display: none; }
+  .screen-panel.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="page-logo">M</div>
+  <div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.45);font-weight:700;letter-spacing:2px;">ADOBE</div>
+    <div class="page-title">Mint</div>
+  </div>
+  <div class="page-sub">Screen Previews · 6 screens</div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <button class="tab-btn active" onclick="showScreen('all')">All Screens</button>
+  <button class="tab-btn" onclick="showScreen('onboarding')">1 · Onboarding</button>
+  <button class="tab-btn" onclick="showScreen('home')">2 · Camera Roll</button>
+  <button class="tab-btn" onclick="showScreen('tagging')">3 · AI Tagging</button>
+  <button class="tab-btn" onclick="showScreen('success')">4 · Upload Success</button>
+  <button class="tab-btn" onclick="showScreen('earnings')">5 · Earnings</button>
+  <button class="tab-btn" onclick="showScreen('profile')">6 · Profile</button>
+</div>
+
+<!-- SCREENS -->
+<div id="screen-container">
+
+<!-- ═══ ALL SCREENS ═══ -->
+<div id="view-all" class="screen-panel visible">
+  <div class="screens-grid"></div><!-- filled by JS -->
+</div>
+
+<!-- ═══ ONBOARDING ═══ -->
+<div id="view-onboarding" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+<!-- ═══ HOME ═══ -->
+<div id="view-home" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+<!-- ═══ TAGGING ═══ -->
+<div id="view-tagging" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+<!-- ═══ SUCCESS ═══ -->
+<div id="view-success" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+<!-- ═══ EARNINGS ═══ -->
+<div id="view-earnings" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+<!-- ═══ PROFILE ═══ -->
+<div id="view-profile" class="screen-panel">
+  <div class="screens-grid" style="justify-content:center;"></div>
+</div>
+
+</div><!-- /screen-container -->
+
+<script>
+/* ───────────────────────────────────────
+   SCREEN HTML BUILDERS
+─────────────────────────────────────── */
+
+function buildOnboarding() {
+  return `
+  <div class="onboarding">
+    <div class="status-bar"><span style="font-size:13px;font-weight:700">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+    <div class="ob-logo-row">
+      <div class="ob-logomark">M</div>
+      <div><div class="ob-adobe">ADOBE</div><div class="ob-mint">Mint</div></div>
+    </div>
+    <div class="ob-hero">
+      <div class="ob-title">Snap.<br>Mint.<br><span>Earn.</span></div>
+      <div class="ob-sub">Turn your camera roll into a money-minting machine on Adobe Stock.</div>
+    </div>
+    <div class="ob-features">
+      <div class="ob-feature">
+        <div class="ob-feat-icon">🖼️</div>
+        <div><div class="ob-feat-title">Browse Your Camera Roll</div><div class="ob-feat-desc">Select any photo from your gallery — landscapes, portraits, street scenes, anything.</div></div>
+      </div>
+      <div class="ob-feature">
+        <div class="ob-feat-icon">✨</div>
+        <div><div class="ob-feat-title">AI Generates Metadata</div><div class="ob-feat-desc">Our AI instantly writes professional titles, descriptions, and keywords for each photo.</div></div>
+      </div>
+      <div class="ob-feature">
+        <div class="ob-feat-icon">📈</div>
+        <div><div class="ob-feat-title">Earn on Adobe Stock</div><div class="ob-feat-desc">Your photos get submitted directly to Adobe Stock's global marketplace of 1M+ buyers.</div></div>
+      </div>
+    </div>
+    <div class="ob-cta">
+      <button class="btn-primary">Get Started — It's Free</button>
+      <button class="btn-secondary"><div class="adobe-a">A</div>Sign in with Adobe ID</button>
+    </div>
+    <div class="ob-legal">By continuing, you agree to Adobe's Terms of Service and Privacy Policy.</div>
+  </div>`;
+}
+
+function buildHome() {
+  const photos = [
+    {src:'https://picsum.photos/seed/h1/200/200',sel:true},
+    {src:'https://picsum.photos/seed/h2/200/200',sel:true},
+    {src:'https://picsum.photos/seed/h3/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h4/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h5/200/200',sel:true},
+    {src:'https://picsum.photos/seed/h6/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h7/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h8/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h9/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h10/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h11/200/200',sel:false},
+    {src:'https://picsum.photos/seed/h12/200/200',sel:false},
+  ];
+  const cells = photos.map(p=>`
+    <div class="photo-cell${p.sel?' selected':''}">
+      <img src="${p.src}" loading="lazy"/>
+      ${p.sel?'<div class="photo-check">✓</div>':''}
+    </div>`).join('');
+
+  return `
+  <div class="home">
+    <div class="home-header">
+      <div class="home-logo-row">
+        <div class="home-logomark">M</div>
+        <div class="home-title">Adobe Mint</div>
+      </div>
+      <span style="font-size:22px;color:var(--dark)">🔔</span>
+    </div>
+    <div class="subheader">
+      <div class="subheader-title">Camera Roll</div>
+      <div class="subheader-count">3 selected</div>
+    </div>
+    <div class="photo-grid">${cells}</div>
+    <div class="mint-bar">
+      <div class="mint-bar-count">3 photos selected</div>
+      <button class="btn-mint">Mint Photos →</button>
+    </div>
+    <div class="tab-bar">
+      <div class="tab-item active"><div class="tab-icon">🖼️</div><div class="tab-lbl">Camera Roll</div></div>
+      <div class="tab-item"><div class="tab-icon">📊</div><div class="tab-lbl">Earnings</div></div>
+      <div class="tab-item"><div class="tab-icon">👤</div><div class="tab-lbl">Profile</div></div>
+    </div>
+  </div>`;
+}
+
+function buildTagging() {
+  const tags = ['landscape','nature','outdoor','sky','scenic','golden hour','travel','trees'];
+  const chips = tags.map(t=>`<div class="tag-chip">${t} <span class="tag-chip-x">×</span></div>`).join('');
+  return `
+  <div class="tagging">
+    <div class="tagging-header">
+      <div class="back-btn">‹</div>
+      <div class="tagging-title-wrap">
+        <div class="tagging-title">AI Tagging</div>
+        <div class="tagging-sub">1 of 3</div>
+      </div>
+      <div class="upload-all">Upload All</div>
+    </div>
+    <div class="tag-content">
+      <div class="photo-preview-row">
+        <img class="tag-photo" src="https://picsum.photos/seed/h1/200/200" />
+        <div class="ai-badge">
+          <div class="ai-status-row"><div class="ai-dot"></div><div class="ai-status-text">AI tagging complete</div></div>
+          <div class="cat-badge">Nature & Landscapes</div>
+          <div style="font-size:10px;color:var(--mid-gray);margin-top:4px;">Confidence: 94%</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Title</div>
+        <input class="field-input" type="text" value="Serene Mountain Landscape at Golden Hour" readonly />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Description</div>
+        <textarea class="field-textarea" readonly>High-quality stock photo featuring a serene mountain landscape at golden hour. Perfect for editorial, commercial, and digital projects.</textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label" style="display:flex;justify-content:space-between;"><span>Keywords</span><span style="font-weight:400;color:var(--mid-gray)">8/50</span></div>
+        <div class="tags-area">${chips}</div>
+      </div>
+      <button class="upload-btn">Next Photo →</button>
+    </div>
+  </div>`;
+}
+
+function buildSuccess() {
+  return `
+  <div class="success-screen">
+    <div class="status-bar" style="width:100%"><span style="font-size:13px;font-weight:700">9:41</span><div class="status-icons"><span>●●●</span><span>🔋</span></div></div>
+    <div class="success-icon">✅</div>
+    <div class="success-title">3 Photos<br>Submitted!</div>
+    <div class="success-sub">Your photos are now in review with Adobe Stock editors. You'll be notified when they're approved and earning.</div>
+    <div class="timeline-card">
+      <div class="tl-row">
+        <div class="tl-icon active">🔍</div>
+        <div><div class="tl-label">Editor Review</div><div class="tl-detail">5–7 business days</div></div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-icon">✔️</div>
+        <div><div class="tl-label">Approval & Goes Live</div><div class="tl-detail">Visible to 1M+ buyers</div></div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-icon">💰</div>
+        <div><div class="tl-label">Start Earning</div><div class="tl-detail">$0.33–$3.30 per download</div></div>
+      </div>
+    </div>
+    <div class="success-actions">
+      <button class="btn-primary">View Earnings Dashboard</button>
+      <button class="btn-secondary">Mint More Photos</button>
+    </div>
+  </div>`;
+}
+
+function buildEarnings() {
+  const months = [
+    {m:'Oct',h:26,a:false},{m:'Nov',h:46,a:false},{m:'Dec',h:73,a:false},
+    {m:'Jan',h:60,a:false},{m:'Feb',h:88,a:false},{m:'Mar',h:100,a:true}
+  ];
+  const bars = months.map(m=>`
+    <div class="bar-group">
+      <div class="bar${m.a?' active':''}" style="height:${m.h}%"></div>
+      <div class="bar-lbl${m.a?' active':''}">${m.m}</div>
+    </div>`).join('');
+
+  const subs = [
+    {img:'https://picsum.photos/seed/mint2/200/200', title:'Young Professional Using Smartphone', cat:'People', earn:'$67.00 · 19 downloads', status:'s-approved', sl:'Approved'},
+    {img:'https://picsum.photos/seed/mint1/200/200', title:'Golden Hour Over Rice Terraces', cat:'Nature', earn:'$24.50 · 7 downloads', status:'s-approved', sl:'Approved'},
+    {img:'https://picsum.photos/seed/mint3/200/200', title:'Street Food Market at Night', cat:'Food & Drink', earn:'', status:'s-reviewing', sl:'In Review'},
+    {img:'https://picsum.photos/seed/mint5/200/200', title:'Colorful Street Art Abstract', cat:'Abstract', earn:'', status:'s-pending', sl:'Pending'},
+  ];
+  const rows = subs.map(s=>`
+    <div class="sub-row">
+      <img class="sub-thumb" src="${s.img}" loading="lazy"/>
+      <div class="sub-info">
+        <div class="sub-title">${s.title}</div>
+        <div class="sub-meta">${s.cat}</div>
+        ${s.earn?`<div class="sub-earn">${s.earn}</div>`:''}
+      </div>
+      <div class="status-badge ${s.status}">${s.sl}</div>
+    </div>`).join('');
+
+  return `
+  <div class="earnings">
+    <div class="earnings-header">
+      <div class="earnings-title">Earnings</div>
+      <div class="payout-btn">💳 Payout</div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-label">TOTAL EARNED</div>
+      <div class="hero-amount">$517.75</div>
+      <div class="growth-row"><span style="color:var(--success);font-size:16px">↑</span><span class="growth-text">+37% vs last month</span></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card accent">
+        <div class="stat-l">This Month</div>
+        <div class="stat-v">$151.50</div>
+        <div class="stat-s">Mar 2026</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-l">Downloads</div>
+        <div class="stat-v">43</div>
+        <div class="stat-s">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-l">Approved</div>
+        <div class="stat-v">4</div>
+        <div class="stat-s">of 7 submitted</div>
+      </div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-label">Monthly Earnings</div>
+      <div class="bar-chart">${bars}</div>
+    </div>
+    <div class="sub-list">
+      <div class="sub-list-label">Submissions</div>
+      ${rows}
+    </div>
+    <div class="tab-bar">
+      <div class="tab-item"><div class="tab-icon">🖼️</div><div class="tab-lbl">Camera Roll</div></div>
+      <div class="tab-item active"><div class="tab-icon">📊</div><div class="tab-lbl">Earnings</div></div>
+      <div class="tab-item"><div class="tab-icon">👤</div><div class="tab-lbl">Profile</div></div>
+    </div>
+  </div>`;
+}
+
+function buildProfile() {
+  return `
+  <div class="profile">
+    <div class="profile-header">
+      <div style="font-size:13px;font-weight:700;color:var(--dark);opacity:0;margin-bottom:2px">9:41</div>
+      <div class="profile-title">Profile</div>
+    </div>
+    <div class="profile-card">
+      <div class="p-avatar">PS</div>
+      <div>
+        <div class="p-name">Priya Sharma</div>
+        <div class="p-email">priya.sharma@gmail.com</div>
+        <div class="p-badges">
+          <div class="p-level">Contributor</div>
+          <div class="p-since">Since Jan 2026</div>
+        </div>
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div class="p-stat"><div class="p-stat-v">$517</div><div class="p-stat-l">Total Earned</div></div>
+      <div class="p-stat"><div class="p-stat-v">4</div><div class="p-stat-l">Approved</div></div>
+      <div class="p-stat"><div class="p-stat-v">7</div><div class="p-stat-l">Submitted</div></div>
+      <div class="p-stat"><div class="p-stat-v">🇮🇳</div><div class="p-stat-l">India</div></div>
+    </div>
+    <div class="settings">
+      <div class="settings-label">Account</div>
+      <div class="settings-group" style="margin-bottom:10px">
+        <div class="setting-row"><div class="setting-icon">👤</div><div class="setting-lbl">Edit Profile</div><div class="setting-chevron">›</div></div>
+        <div class="setting-row"><div class="setting-icon">💳</div><div class="setting-lbl">Payment Method</div><div class="setting-val">PayPal</div><div class="setting-chevron">›</div></div>
+        <div class="setting-row"><div class="setting-icon">🛡️</div><div class="setting-lbl">Stock Agreement</div><div class="setting-chevron">›</div></div>
+      </div>
+      <div class="settings-label">Preferences</div>
+      <div class="settings-group">
+        <div class="setting-row"><div class="setting-icon">🔔</div><div class="setting-lbl">Notifications</div><div class="toggle"></div></div>
+        <div class="setting-row"><div class="setting-icon">✨</div><div class="setting-lbl">Auto AI Tagging</div><div class="toggle"></div></div>
+      </div>
+    </div>
+    <div class="tab-bar" style="margin-top:auto">
+      <div class="tab-item"><div class="tab-icon">🖼️</div><div class="tab-lbl">Camera Roll</div></div>
+      <div class="tab-item"><div class="tab-icon">📊</div><div class="tab-lbl">Earnings</div></div>
+      <div class="tab-item active"><div class="tab-icon">👤</div><div class="tab-lbl">Profile</div></div>
+    </div>
+  </div>`;
+}
+
+/* ───────────────────────────────────────
+   PHONE WRAPPER
+─────────────────────────────────────── */
+function makePhone(label, htmlContent) {
+  return `
+  <div class="phone-wrap">
+    <div class="phone-label">${label}</div>
+    <div class="phone-shell">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">${htmlContent}</div>
+    </div>
+  </div>`;
+}
+
+const screens = [
+  { id:'onboarding', label:'1 · Onboarding',      fn: buildOnboarding },
+  { id:'home',       label:'2 · Camera Roll',      fn: buildHome       },
+  { id:'tagging',    label:'3 · AI Tagging',        fn: buildTagging    },
+  { id:'success',    label:'4 · Upload Success',    fn: buildSuccess    },
+  { id:'earnings',   label:'5 · Earnings',          fn: buildEarnings   },
+  { id:'profile',    label:'6 · Profile',           fn: buildProfile    },
+];
+
+/* Populate all-screens grid */
+const allGrid = document.querySelector('#view-all .screens-grid');
+screens.forEach(s => {
+  allGrid.innerHTML += makePhone(s.label, s.fn());
+});
+
+/* Populate individual panels */
+screens.forEach(s => {
+  const grid = document.querySelector(`#view-${s.id} .screens-grid`);
+  if (grid) grid.innerHTML = makePhone(s.label, s.fn());
+});
+
+/* ───────────────────────────────────────
+   TAB SWITCHING
+─────────────────────────────────────── */
+function showScreen(name) {
+  document.querySelectorAll('.screen-panel').forEach(el => el.classList.remove('visible'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`view-${name === 'all' ? 'all' : name}`).classList.add('visible');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

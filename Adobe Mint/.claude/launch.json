@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "adobe-mint-preview",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((req,res)=>{const name=req.url==='/'||req.url==='/index.html'?'index.html':req.url.replace('/','');const f=p.join('/Users/shruti3/Desktop/Adobe Mint/preview',name);try{res.writeHead(200,{'Content-Type':'text/html'});res.end(fs.readFileSync(f));}catch(e){res.writeHead(404);res.end('not found');}}).listen(3456,()=>console.log('Preview on 3456'))"],
+      "port": 3456
+    }
+  ]
+}

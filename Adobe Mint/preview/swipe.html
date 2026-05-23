@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Adobe Mint — Swipe to Mint</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --red: #FA0F00;
+  --dark: #1D1D1D;
+  --mid-gray: #6E6E6E;
+  --light-gray: #C8C8C8;
+  --off-white: #F5F5F5;
+  --white: #FFFFFF;
+  --border: #E8E8E8;
+  --success: #2D9D78;
+  --error: #E34850;
+}
+
+body {
+  background: #EAEAEA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 32px 20px 40px;
+}
+
+/* ── Page header ── */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.page-logo {
+  width: 44px; height: 44px;
+  background: var(--red);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 24px; color: #fff;
+}
+.page-title-wrap { display: flex; flex-direction: column; }
+.page-adobe { font-size: 10px; font-weight: 700; color: var(--mid-gray); letter-spacing: 2px; }
+.page-title { font-size: 26px; font-weight: 900; color: var(--dark); line-height: 1; }
+.page-sub { font-size: 13px; color: var(--mid-gray); margin-left: 8px; align-self: flex-end; padding-bottom: 3px; }
+
+/* ── Phone shell ── */
+.phone-shell {
+  width: 340px;
+  height: 700px;
+  border-radius: 50px;
+  background: #1a1a1a;
+  padding: 14px;
+  box-shadow:
+    0 0 0 1px #2a2a2a,
+    0 30px 80px rgba(0,0,0,0.4),
+    0 8px 24px rgba(0,0,0,0.25);
+  position: relative;
+}
+.phone-notch {
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 30px;
+  background: #1a1a1a;
+  border-radius: 0 0 22px 22px;
+  z-index: 10;
+}
+.phone-screen {
+  width: 100%; height: 100%;
+  border-radius: 38px;
+  background: var(--off-white);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  height: 46px;
+  display: flex; align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 20px 8px;
+  font-size: 13px; font-weight: 700; color: var(--dark);
+  flex-shrink: 0;
+  background: var(--off-white);
+}
+
+/* ── App header ── */
+.app-header {
+  display: flex; align-items: center;
+  padding: 0 16px 8px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.close-btn { font-size: 22px; color: var(--dark); cursor: pointer; line-height: 1; }
+.progress-bar {
+  flex: 1; display: flex; gap: 4px;
+}
+.prog-seg {
+  flex: 1; height: 4px; border-radius: 2px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.prog-seg.minted { background: var(--success); }
+.prog-seg.active { background: var(--dark); }
+.prog-count {
+  font-size: 12px; font-weight: 600; color: var(--mid-gray);
+  white-space: nowrap;
+}
+
+/* ── Hint row ── */
+.hint-row {
+  display: flex; justify-content: space-between;
+  padding: 2px 28px 6px;
+  flex-shrink: 0;
+}
+.hint { display: flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: var(--mid-gray);
+}
+.hint-icon { font-size: 16px; }
+
+/* ── Card stack ── */
+.card-stack {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.card {
+  position: absolute;
+  width: 272px;
+  height: 340px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--dark);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.15);
+  cursor: grab;
+  user-select: none;
+  will-change: transform;
+  touch-action: none;
+}
+.card:active { cursor: grabbing; }
+.card-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  position: absolute;
+  pointer-events: none;
+  border-radius: 22px;
+}
+.card-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+  border-radius: 0 0 22px 22px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 16px;
+  gap: 8px;
+  pointer-events: none;
+}
+.card-cat {
+  display: inline-flex;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 100px;
+  padding: 3px 10px;
+  font-size: 10px; font-weight: 700; color: #fff;
+  width: fit-content;
+}
+.card-title {
+  font-size: 16px; font-weight: 700; color: #fff; line-height: 1.3;
+}
+.card-kws { display: flex; flex-wrap: wrap; gap: 4px; }
+.card-kw {
+  background: rgba(255,255,255,0.14);
+  border-radius: 100px;
+  padding: 2px 8px;
+  font-size: 10px; color: rgba(255,255,255,0.82);
+}
+
+/* ── Stamps ── */
+.stamp {
+  position: absolute;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border-width: 3px;
+  border-style: solid;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.05s;
+}
+.stamp-mint {
+  top: 32px; right: 18px;
+  border-color: var(--success);
+  color: var(--success);
+  transform: rotate(12deg);
+}
+.stamp-skip {
+  top: 32px; left: 18px;
+  border-color: var(--error);
+  color: var(--error);
+  transform: rotate(-12deg);
+}
+
+/* Back cards */
+.card-back-1 {
+  transform: scale(0.96) translateY(10px);
+  z-index: 1;
+  pointer-events: none;
+}
+.card-back-2 {
+  transform: scale(0.92) translateY(20px);
+  z-index: 0;
+  pointer-events: none;
+}
+.card-top { z-index: 2; }
+
+/* ── Actions ── */
+.actions {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; padding: 10px 0 6px;
+  flex-shrink: 0;
+}
+.action-btn {
+  width: 60px; height: 60px; border-radius: 30px;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.action-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+.action-btn:active { transform: scale(0.94); }
+.skip-btn { border-color: #FEECEC; }
+.mint-btn { border-color: #E8F8F3; }
+.undo-btn {
+  width: 42px; height: 42px; border-radius: 21px;
+  background: #fff; border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.15s;
+}
+.undo-btn:hover { transform: scale(1.08); }
+
+/* ── Bottom counts ── */
+.bottom-counts {
+  display: flex; justify-content: space-between;
+  padding: 0 28px 14px;
+  flex-shrink: 0;
+}
+.count-text { font-size: 12px; font-weight: 700; }
+.count-skip { color: var(--error); }
+.count-mint { color: var(--success); }
+
+/* ── Done state ── */
+.done-screen {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px; gap: 14px;
+  animation: fadeIn 0.4s ease;
+}
+.done-emoji { font-size: 72px; line-height: 1; }
+.done-title { font-size: 28px; font-weight: 900; color: var(--dark); }
+.done-sub { font-size: 14px; color: var(--mid-gray); text-align: center; line-height: 1.5; }
+.done-btn {
+  margin-top: 12px;
+  width: 100%;
+  height: 50px; background: var(--red);
+  border-radius: 14px; border: none;
+  font-size: 15px; font-weight: 700; color: #fff;
+  cursor: pointer;
+}
+.done-mint-count {
+  font-size: 48px; font-weight: 900; color: var(--success);
+}
+.done-skip-count {
+  font-size: 24px; font-weight: 700; color: var(--mid-gray);
+  margin-top: -10px;
+}
+
+/* ── Tip ── */
+.tip {
+  margin-top: 22px;
+  font-size: 13px; color: var(--mid-gray);
+  text-align: center;
+  display: flex; align-items: center; gap: 8px;
+}
+.tip-arrow { font-size: 20px; animation: bounce 1s infinite alternate; }
+@keyframes bounce { from { transform: translateX(-4px); } to { transform: translateX(4px); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes flyRight {
+  to { transform: translateX(500px) rotate(25deg); opacity: 0; }
+}
+@keyframes flyLeft {
+  to { transform: translateX(-500px) rotate(-25deg); opacity: 0; }
+}
+.fly-right { animation: flyRight 0.32s ease-in forwards !important; }
+.fly-left { animation: flyLeft 0.32s ease-in forwards !important; }
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="page-logo">M</div>
+  <div class="page-title-wrap">
+    <div class="page-adobe">ADOBE</div>
+    <div class="page-title">Mint</div>
+  </div>
+  <div class="page-sub">Swipe to Mint</div>
+</div>
+
+<!-- PHONE -->
+<div class="phone-shell">
+  <div class="phone-notch"></div>
+  <div class="phone-screen" id="phone-screen">
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <span style="font-size:11px">●●● WiFi 🔋</span>
+    </div>
+
+    <!-- App header -->
+    <div class="app-header">
+      <div class="close-btn">✕</div>
+      <div class="progress-bar" id="progress-bar"></div>
+      <div class="prog-count" id="prog-count"></div>
+    </div>
+
+    <!-- Hint row -->
+    <div class="hint-row">
+      <div class="hint"><span class="hint-icon" style="color:var(--error)">✕</span> Skip</div>
+      <div class="hint">Mint <span class="hint-icon" style="color:var(--success)">✓</span></div>
+    </div>
+
+    <!-- Card stack -->
+    <div class="card-stack" id="card-stack"></div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="action-btn skip-btn" id="btn-skip" onclick="triggerSkip()">✕</div>
+      <div class="undo-btn" onclick="triggerUndo()">↩</div>
+      <div class="action-btn mint-btn" id="btn-mint" onclick="triggerMint()">✓</div>
+    </div>
+
+    <!-- Bottom counts -->
+    <div class="bottom-counts">
+      <div class="count-text count-skip" id="count-skip">0 skipped</div>
+      <div class="count-text count-mint" id="count-mint">0 to mint</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="tip">
+  <span class="tip-arrow">←</span>
+  Drag the card left to skip · right to mint
+  <span class="tip-arrow">→</span>
+</div>
+
+<script>
+/* ─── DATA ─── */
+const CARDS = [
+  { img: 'https://picsum.photos/seed/sw1/400/500', cat: 'Nature & Landscapes',   title: 'Serene Mountain Landscape at Golden Hour',       kw: ['landscape','nature','golden hour','scenic'] },
+  { img: 'https://picsum.photos/seed/sw2/400/500', cat: 'People & Portraits',    title: 'Young Professional Using Smartphone',             kw: ['person','urban','technology','lifestyle'] },
+  { img: 'https://picsum.photos/seed/sw3/400/500', cat: 'Food & Drink',          title: 'Street Food Market at Night',                    kw: ['food','street','night','asia'] },
+  { img: 'https://picsum.photos/seed/sw4/400/500', cat: 'Travel & Architecture', title: 'Ancient Temple Architecture Detail',              kw: ['temple','heritage','stone','travel'] },
+  { img: 'https://picsum.photos/seed/sw5/400/500', cat: 'Lifestyle & Wellness',  title: 'Morning Yoga by the Ocean',                      kw: ['yoga','ocean','wellness','sunrise'] },
+  { img: 'https://picsum.photos/seed/sw6/400/500', cat: 'Abstract & Textures',   title: 'Colorful Street Art Abstract',                   kw: ['abstract','art','colorful','urban'] },
+  { img: 'https://picsum.photos/seed/sw7/400/500', cat: 'Animals & Wildlife',    title: 'Majestic Bird Portrait in Natural Habitat',      kw: ['bird','wildlife','nature','portrait'] },
+];
+
+let currentIdx = 0;
+let mintCount  = 0;
+let skipCount  = 0;
+let history    = []; // { idx, action }
+
+/* ─── RENDER ─── */
+function render() {
+  const stack = document.getElementById('card-stack');
+  stack.innerHTML = '';
+
+  if (currentIdx >= CARDS.length) {
+    showDone(); return;
+  }
+
+  // Progress bar
+  const pb = document.getElementById('progress-bar');
+  pb.innerHTML = CARDS.map((_, i) => {
+    const cls = i < currentIdx ? 'prog-seg minted' : i === currentIdx ? 'prog-seg active' : 'prog-seg';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+  document.getElementById('prog-count').textContent = `${CARDS.length - currentIdx} left`;
+  document.getElementById('count-mint').textContent = `${mintCount} to mint`;
+  document.getElementById('count-skip').textContent = `${skipCount} skipped`;
+
+  // Back cards (purely decorative)
+  for (let offset = Math.min(2, CARDS.length - currentIdx - 1); offset >= 1; offset--) {
+    const d = CARDS[currentIdx + offset];
+    const back = document.createElement('div');
+    back.className = `card card-back-${offset}`;
+    back.innerHTML = `<img class="card-img" src="${d.img}" draggable="false"/>`;
+    stack.appendChild(back);
+  }
+
+  // Top card
+  const d = CARDS[currentIdx];
+  const card = document.createElement('div');
+  card.className = 'card card-top';
+  card.id = 'top-card';
+  card.innerHTML = `
+    <img class="card-img" src="${d.img}" draggable="false"/>
+    <div class="card-overlay">
+      <div class="card-cat">${d.cat}</div>
+      <div class="card-title">${d.title}</div>
+      <div class="card-kws">${d.kw.map(k=>`<div class="card-kw">${k}</div>`).join('')}</div>
+    </div>
+    <div class="stamp stamp-mint" id="stamp-mint">MINT</div>
+    <div class="stamp stamp-skip" id="stamp-skip">SKIP</div>
+  `;
+  stack.appendChild(card);
+  attachDrag(card);
+}
+
+/* ─── DRAG ─── */
+function attachDrag(card) {
+  let startX, startY, curX = 0, isDragging = false;
+
+  const move = (x, y) => {
+    curX = x - startX;
+    const dy = y - startY;
+    const rot = curX / 18;
+    card.style.transform = `translate(${curX}px, ${dy * 0.25}px) rotate(${rot}deg)`;
+    card.style.transition = 'none';
+
+    const pct = Math.abs(curX) / 120;
+    const clamp = Math.min(pct, 1);
+    if (curX > 0) {
+      document.getElementById('stamp-mint').style.opacity = clamp;
+      document.getElementById('stamp-skip').style.opacity = 0;
+    } else {
+      document.getElementById('stamp-skip').style.opacity = clamp;
+      document.getElementById('stamp-mint').style.opacity = 0;
+    }
+  };
+
+  const end = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+
+    if (curX > 110) {
+      flyOut('right');
+    } else if (curX < -110) {
+      flyOut('left');
+    } else {
+      card.style.transition = 'transform 0.35s cubic-bezier(.34,1.56,.64,1)';
+      card.style.transform = '';
+      document.getElementById('stamp-mint').style.opacity = 0;
+      document.getElementById('stamp-skip').style.opacity = 0;
+    }
+    curX = 0;
+  };
+
+  const onMouseMove = e => move(e.clientX, e.clientY);
+  const onMouseUp = () => end();
+
+  card.addEventListener('mousedown', e => {
+    isDragging = true;
+    startX = e.clientX; startY = e.clientY;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  card.addEventListener('touchstart', e => {
+    isDragging = true;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    move(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => end());
+}
+
+/* ─── FLY OUT ─── */
+function flyOut(dir) {
+  const card = document.getElementById('top-card');
+  if (!card) return;
+  card.style.pointerEvents = 'none';
+  card.classList.add(dir === 'right' ? 'fly-right' : 'fly-left');
+  history.push({ idx: currentIdx, action: dir });
+  setTimeout(() => {
+    if (dir === 'right') mintCount++; else skipCount++;
+    currentIdx++;
+    render();
+  }, 320);
+}
+
+function triggerMint() { flyOut('right'); }
+function triggerSkip() { flyOut('left'); }
+function triggerUndo() {
+  if (history.length === 0) return;
+  const last = history.pop();
+  if (last.action === 'right') mintCount--; else skipCount--;
+  currentIdx = last.idx;
+  render();
+}
+
+/* ─── DONE ─── */
+function showDone() {
+  const screen = document.getElementById('phone-screen');
+  const stack = document.getElementById('card-stack');
+  const actions = document.querySelector('.actions');
+  const counts = document.querySelector('.bottom-counts');
+  const header = document.querySelector('.app-header');
+  const hint = document.querySelector('.hint-row');
+  [stack, actions, counts, header, hint].forEach(el => el.style.display = 'none');
+
+  const done = document.createElement('div');
+  done.className = 'done-screen';
+  done.innerHTML = `
+    <div class="done-emoji">🎉</div>
+    <div class="done-mint-count">${mintCount}</div>
+    <div class="done-title">photos to mint</div>
+    <div class="done-sub">${skipCount} skipped · ${mintCount} queued for Adobe Stock review</div>
+    <button class="done-btn" onclick="restart()">Review Metadata & Upload →</button>
+  `;
+  screen.appendChild(done);
+  document.getElementById('prog-count').textContent = 'Done!';
+}
+
+function restart() {
+  currentIdx = mintCount = skipCount = 0;
+  history = [];
+  document.querySelector('.actions').style.display = '';
+  document.querySelector('.bottom-counts').style.display = '';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.hint-row').style.display = '';
+  const done = document.querySelector('.done-screen');
+  if (done) done.remove();
+  render();
+}
+
+/* ─── KEYBOARD ─── */
+document.addEventListener('keydown', e => {
+  if (currentIdx >= CARDS.length) return;
+  if (e.key === 'ArrowRight' || e.key === 'd') triggerMint();
+  if (e.key === 'ArrowLeft'  || e.key === 'a') triggerSkip();
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey)) triggerUndo();
+});
+
+render();
+</script>
+</body>
+</html>

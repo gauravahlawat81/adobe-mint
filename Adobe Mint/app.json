@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Adobe Mint",
+    "slug": "adobe-mint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FA0F00"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.adobe.mint",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Adobe Mint needs access to your photos to help you monetize your camera roll on Adobe Stock."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FA0F00"
+      },
+      "package": "com.adobe.mint",
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "scheme": "com.adobe.mint",
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Adobe Mint needs access to your photos to help you monetize your camera roll on Adobe Stock.",
+          "savePhotosPermission": "Allow Adobe Mint to save photos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ]
+  }
+}

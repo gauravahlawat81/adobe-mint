@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+android/app/build/
+ios/build/
+*.apk
+*.ipa
+
+# Expo
+.expo/
+web-build/
+
+# Environment files (keep .env.example, ignore actual secrets)
+.env
+.env.local
+.env.production
+
+# Metro bundler
+.metro-health-check*
+
+# macOS
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Android local config (has local paths)
+Adobe Mint/android/local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Keystores (signing keys — never commit these)
+*.keystore
+*.jks
+
+# App config with secrets
+Adobe Mint/src/config.ts
