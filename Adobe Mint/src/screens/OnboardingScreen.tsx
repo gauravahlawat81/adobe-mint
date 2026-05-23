@@ -14,9 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import type { RootStackParamList } from '../types';
 import { BACKEND_URL } from '../config';
+import { saveSession } from '../utils/session';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -63,9 +66,58 @@ export default function OnboardingScreen() {
         `${BACKEND_URL}/auth/google`,
         'com.adobe.mint://auth'
       );
-      if (result.type === 'cancel') setSigningIn(false);
+
+      // On Android, openAuthSessionAsync intercepts the deep link internally
+      // and returns it in result.url — the Linking event does NOT fire.
+      // We must handle the token here directly.
+      if (result.type === 'success' && result.url) {
+        await handleAuthUrl(result.url);
+      } else {
+        // cancel / dismiss / any other outcome → reset button
+        setSigningIn(false);
+      }
     } catch {
       Alert.alert('Sign-in failed', 'Could not connect. Please try again.');
+      setSigningIn(false);
+    }
+  };
+
+  const handleAuthUrl = async (url: string) => {
+    try {
+      const parsed = Linking.parse(url);
+      const sessionToken = parsed.queryParams?.session as string | undefined;
+      const error = parsed.queryParams?.error as string | undefined;
+
+      if (error) {
+        Alert.alert('Sign-in failed', `Google returned: ${error}`);
+        setSigningIn(false);
+        return;
+      }
+
+      if (!sessionToken) {
+        Alert.alert('Sign-in failed', 'No session token received.');
+        setSigningIn(false);
+        return;
+      }
+
+      // Decode JWT payload (backend already verified it)
+      const [, payloadB64] = sessionToken.split('.');
+      const payload = JSON.parse(
+        atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+      );
+
+      await saveSession({
+        token: sessionToken,
+        id:    payload.sub,
+        email: payload.email,
+        name:  payload.name ?? payload.email,
+      });
+      await AsyncStorage.setItem('onboarded', 'true');
+
+      navigation.replace('Main');
+    } catch (e) {
+      console.error('handleAuthUrl error:', e);
+      Alert.alert('Sign-in failed', 'Could not complete sign-in. Please try again.');
       setSigningIn(false);
     }
   };

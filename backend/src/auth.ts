@@ -7,13 +7,24 @@ import { upsertUser } from './db';
 
 export const authRouter = Router();
 
-// In-memory state store (use Redis in prod for multi-instance)
-const pendingStates = new Map<string, number>();
+// Stateless state: sign a timestamp so any instance can verify it
+function makeState(): string {
+  const ts = Date.now().toString(36);
+  const sig = crypto.createHmac('sha256', config.jwt.secret).update(ts).digest('hex').slice(0, 16);
+  return `${ts}.${sig}`;
+}
+function verifyState(state: string): boolean {
+  const [ts, sig] = state.split('.');
+  if (!ts || !sig) return false;
+  const expected = crypto.createHmac('sha256', config.jwt.secret).update(ts).digest('hex').slice(0, 16);
+  if (sig !== expected) return false;
+  const age = Date.now() - parseInt(ts, 36);
+  return age < 10 * 60 * 1000; // 10-minute window
+}
 
 // GET /auth/google — kick off the Google OAuth flow
 authRouter.get('/google', (_req: Request, res: Response) => {
-  const state = crypto.randomBytes(16).toString('hex');
-  pendingStates.set(state, Date.now() + 10 * 60 * 1000); // 10-min expiry
+  const state = makeState();
 
   const params = new URLSearchParams({
     client_id:     config.google.clientId,
@@ -36,11 +47,9 @@ authRouter.get('/callback', async (req: Request, res: Response) => {
     return res.redirect(`${config.appDeepLink}?error=${encodeURIComponent(error)}`);
   }
 
-  const expiry = pendingStates.get(state);
-  if (!expiry || Date.now() > expiry) {
+  if (!state || !verifyState(state)) {
     return res.redirect(`${config.appDeepLink}?error=invalid_state`);
   }
-  pendingStates.delete(state);
 
   try {
     // Exchange auth code for tokens
@@ -93,7 +102,11 @@ authRouter.get('/callback', async (req: Request, res: Response) => {
     // Deep-link back to the app with the session token
     res.redirect(`${config.appDeepLink}?session=${encodeURIComponent(sessionToken)}`);
   } catch (err: any) {
-    console.error('OAuth callback error:', err?.response?.data ?? err.message);
+    const detail = err?.response?.data
+      ? JSON.stringify(err.response.data)
+      : err?.message ?? String(err);
+    console.error('OAuth callback error:', detail);
+    console.error('redirect_uri used:', config.google.redirectUri);
     res.redirect(`${config.appDeepLink}?error=token_exchange_failed`);
   }
 });
