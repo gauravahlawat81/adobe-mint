@@ -9,6 +9,7 @@ import {
   useColorScheme,
   Image,
   StatusBar,
+  type DimensionValue,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,7 @@ function getTheme(isDark: boolean) {
     blob3:        isDark ? 'rgba(180,10,0,0.05)'    : 'rgba(250,15,0,0.04)',
     googleShadow: isDark ? 0.4                      : 0.12,
     googleBorder: isDark ? 'transparent'            : 'rgba(0,0,0,0.09)',
+    googleBorderWidth: isDark ? 0 : 1,
   };
 }
 
@@ -217,6 +219,7 @@ export default function OnboardingScreen() {
                   {
                     shadowOpacity: theme.googleShadow,
                     borderColor: theme.googleBorder,
+                    borderWidth: theme.googleBorderWidth,
                   },
                 ]}
                 onPress={handleGoogleSignIn}
@@ -276,13 +279,13 @@ const styles = StyleSheet.create({
   blob2: {
     width: 220,
     height: 220,
-    top: '38%' as any,
+    top: '38%' as DimensionValue,
     right: -60,
   },
   blob3: {
     width: 300,
     height: 180,
-    bottom: '18%' as any,
+    bottom: '18%' as DimensionValue,
     left: -40,
   },
   scroll: {
@@ -412,7 +415,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md + 2,
     alignSelf: 'stretch',
-    borderWidth: 1,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
