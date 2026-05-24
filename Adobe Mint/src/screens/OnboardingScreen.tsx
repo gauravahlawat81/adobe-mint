@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   useWindowDimensions,
@@ -157,31 +156,28 @@ export default function OnboardingScreen() {
         <View style={[styles.blob, styles.blob3, { backgroundColor: theme.blob3 }]} />
 
         <SafeAreaView style={styles.flex}>
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-          >
+          <View style={styles.scroll}>
             {/* ── Top block ── */}
             <View style={styles.top}>
+
               {/* Logo */}
               <View style={styles.logoRow}>
                 <View style={styles.logoMark}>
                   <Text style={styles.logoMarkText}>M</Text>
                 </View>
                 <View>
-                  <Text style={styles.logoAdobe}>ADOBE</Text>
-                  <Text style={styles.logoMint}>Mint</Text>
+                  <Text style={[styles.logoAdobe, { color: theme.logoAdobe }]}>ADOBE</Text>
+                  <Text style={[styles.logoMint, { color: theme.text }]}>Mint</Text>
                 </View>
               </View>
 
               {/* Hero */}
               <View style={[styles.hero, compact && styles.heroCompact]}>
+                <Text style={styles.eyebrow}>Your photos, monetized</Text>
                 <Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>
-                  Snap.{'\n'}Mint.{'\n'}Earn.
+                  {'Snap.\nMint.\nEarn.'}
                 </Text>
-                <Text style={styles.heroSub}>
+                <Text style={[styles.heroSub, { color: theme.textMuted }]}>
                   Turn your camera roll into a money-minting machine on Adobe Stock.
                 </Text>
               </View>
@@ -189,37 +185,59 @@ export default function OnboardingScreen() {
               {/* Features */}
               <View style={styles.features}>
                 {FEATURES.map(f => (
-                  <View key={f.title} style={styles.featureRow}>
+                  <View
+                    key={f.title}
+                    style={[
+                      styles.featureRow,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: theme.surfaceBorder,
+                      },
+                    ]}
+                  >
                     <View style={styles.featureIcon}>
-                      <Ionicons name={f.icon} size={20} color="#FA0F00" />
+                      <Ionicons name={f.icon} size={18} color="#FA0F00" />
                     </View>
                     <View style={styles.featureText}>
-                      <Text style={styles.featureTitle}>{f.title}</Text>
-                      <Text style={styles.featureDesc}>{f.description}</Text>
+                      <Text style={[styles.featureTitle, { color: theme.text }]}>{f.title}</Text>
+                      <Text style={[styles.featureDesc, { color: theme.textMuted }]}>{f.description}</Text>
                     </View>
                   </View>
                 ))}
               </View>
             </View>
 
-            {/* ── Bottom block (CTAs) ── */}
+            {/* ── Bottom block ── */}
             <View style={styles.bottom}>
-              {/* Primary CTA */}
+              {/* Google Sign-In */}
               <TouchableOpacity
-                style={[styles.googleBtn, signingIn && styles.googleBtnDisabled]}
+                style={[
+                  styles.googleBtn,
+                  signingIn && styles.googleBtnDisabled,
+                  {
+                    shadowOpacity: theme.googleShadow,
+                    borderColor: theme.googleBorder,
+                  },
+                ]}
                 onPress={handleGoogleSignIn}
                 disabled={signingIn}
                 activeOpacity={0.85}
               >
-                <View style={styles.googleLogoBox}>
-                  <Text style={styles.googleLogoLetter}>G</Text>
-                </View>
+                <Image
+                  source={require('../../assets/google-logo.png')}
+                  style={styles.googleLogo}
+                  resizeMode="contain"
+                />
                 <Text style={styles.googleBtnText}>
                   {signingIn ? 'Opening Sign-In…' : 'Sign in with Google'}
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.securedText}>🔒 Secured by Google</Text>
+              {/* Secured */}
+              <View style={styles.securedRow}>
+                <Ionicons name="lock-closed-outline" size={11} color={theme.securedText} />
+                <Text style={[styles.securedText, { color: theme.securedText }]}>Secured by Google</Text>
+              </View>
 
               {/* Skip */}
               <TouchableOpacity
@@ -227,14 +245,14 @@ export default function OnboardingScreen() {
                 onPress={() => navigation.replace('Main')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.skipText}>Continue without account</Text>
+                <Text style={[styles.skipText, { color: theme.skipText }]}>Continue without account</Text>
               </TouchableOpacity>
 
-              <Text style={styles.legal}>
+              <Text style={[styles.legal, { color: theme.textFaint }]}>
                 By continuing, you agree to Adobe's Terms of Service and Privacy Policy.
               </Text>
             </View>
-          </ScrollView>
+          </View>
         </SafeAreaView>
       </LinearGradient>
     </>
@@ -268,7 +286,7 @@ const styles = StyleSheet.create({
     left: -40,
   },
   scroll: {
-    flexGrow: 1,
+    flex: 1,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
@@ -290,9 +308,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     backgroundColor: '#FA0F00',
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.sm + 4,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#FA0F00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   logoMarkText: {
     color: '#FFFFFF',
@@ -300,15 +323,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.weights.heavy,
   },
   logoAdobe: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.xs - 2,
     fontFamily: typography.weights.bold,
-    color: '#ABABAB',
     letterSpacing: 2,
   },
   logoMint: {
     fontSize: typography.sizes.xl,
     fontFamily: typography.weights.heavy,
-    color: '#1A1A1A',
     lineHeight: 24,
   },
 
@@ -319,10 +340,17 @@ const styles = StyleSheet.create({
   heroCompact: {
     gap: spacing.xs,
   },
+  eyebrow: {
+    fontSize: 10,
+    fontFamily: typography.weights.bold,
+    color: '#FA0F00',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
   heroTitle: {
     fontSize: 40,
     fontFamily: typography.weights.heavy,
-    color: '#1A1A1A',
+    color: '#FA0F00',
     lineHeight: 46,
   },
   heroTitleCompact: {
@@ -331,50 +359,47 @@ const styles = StyleSheet.create({
   },
   heroSub: {
     fontSize: typography.sizes.md,
-    color: '#888888',
     lineHeight: 22,
   },
 
   // Features
   features: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: '#F2F2F7',
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.md,
   },
   featureIcon: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: borderRadius.md,
-    backgroundColor: '#FFF0EF',
+    backgroundColor: 'rgba(250,15,0,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(250,15,0,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   featureText: {
     flex: 1,
-    paddingTop: 2,
   },
   featureTitle: {
     fontSize: typography.sizes.sm,
     fontFamily: typography.weights.semibold,
-    color: '#1A1A1A',
     marginBottom: 2,
   },
   featureDesc: {
     fontSize: typography.sizes.xs,
-    color: '#888888',
     lineHeight: 17,
   },
 
   // ── Bottom ──
   bottom: {
-    marginTop: spacing.xl,
     gap: spacing.sm,
     alignItems: 'center',
   },
@@ -383,35 +408,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: '#FA0F00',
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md + 2,
     alignSelf: 'stretch',
+    borderWidth: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   googleBtnDisabled: {
     opacity: 0.6,
   },
-  googleLogoBox: {
-    width: 22,
-    height: 22,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleLogoLetter: {
-    color: '#4285F4',
-    fontSize: 13,
-    fontFamily: typography.weights.heavy,
+  googleLogo: {
+    width: 20,
+    height: 20,
   },
   googleBtnText: {
-    color: '#FFFFFF',
+    color: '#1D1D1D',
     fontSize: typography.sizes.md,
     fontFamily: typography.weights.bold,
   },
+  securedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   securedText: {
     fontSize: typography.sizes.xs,
-    color: '#BBBBBB',
     textAlign: 'center',
   },
   skipBtn: {
@@ -420,13 +445,11 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: typography.sizes.sm,
-    color: '#ABABAB',
     fontFamily: typography.weights.regular,
     textDecorationLine: 'underline',
   },
   legal: {
     fontSize: typography.sizes.xs,
-    color: '#BBBBBB',
     textAlign: 'center',
     lineHeight: 17,
     paddingHorizontal: spacing.md,
