@@ -65,6 +65,40 @@ export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null>
     throw new Error('file_read_failed');
   }
 
+  const requestBody = {
+    model: 'gpt-4o-mini',
+    max_tokens: 300,
+    messages: [
+      {
+        role: 'system',
+        content: SCAN_PROMPT,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${base64}`, detail: 'low' },
+          },
+          { type: 'text', text: 'Analyze this photo.' },
+        ],
+      },
+    ],
+  };
+
+  // 🔍 DEBUG — log the full prompt being sent (remove before shipping)
+  console.log('[aiTagging] REQUEST BODY →', JSON.stringify({
+    ...requestBody,
+    messages: requestBody.messages.map(m => ({
+      ...m,
+      content: Array.isArray(m.content)
+        ? m.content.map(c => c.type === 'image_url'
+            ? { type: 'image_url', url: '[base64 image omitted]' }
+            : c)
+        : m.content,
+    })),
+  }, null, 2));
+
   let response: Response;
   try {
     response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -73,26 +107,7 @@ export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null>
         'Content-Type': 'application/json',
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        max_tokens: 300,
-        messages: [
-          {
-            role: 'system',
-            content: SCAN_PROMPT,
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${base64}`, detail: 'low' },
-              },
-              { type: 'text', text: 'Analyze this photo.' },
-            ],
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
   } catch (e) {
     console.error('[aiTagging] Network error calling OpenAI:', e);
