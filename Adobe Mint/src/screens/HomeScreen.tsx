@@ -13,8 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import { scanCameraRoll } from '../utils/aiTagging';
 import { postSubmission } from '../utils/api';
+import { scanningService } from '../services/ScanningService';
 import SwipeCard, { CARD_WIDTH } from '../components/SwipeCard';
 import type { TaggedPhoto } from '../types';
 
@@ -25,11 +25,18 @@ const SCAN_LIMIT   = 200;
 type Phase = 'permission' | 'scanning' | 'swiping' | 'done';
 
 export default function HomeScreen() {
-  const [phase, setPhase]               = useState<Phase>('permission');
-  const [cards, setCards]               = useState<TaggedPhoto[]>([]);
+  const [phase, setPhase]               = useState<Phase>(() => {
+    // Restore phase if scan is already running (e.g. user switched tabs and came back)
+    const s = scanningService.getState();
+    if (s.status === 'running')  return s.cards.length > 0 ? 'swiping' : 'scanning';
+    if (s.status === 'complete') return s.cards.length > 0 ? 'swiping' : 'permission';
+    return 'permission';
+  });
+  const [cards, setCards]               = useState<TaggedPhoto[]>(() => scanningService.getState().cards);
   const [index, setIndex]               = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [progress, setProgress]         = useState({ scanned: 0, total: 0, found: 0, errors: 0 });
+  const [progress, setProgress]         = useState(() => scanningService.getState().progress);
+  const [scanDone, setScanDone]         = useState(() => scanningService.getState().status === 'complete');
   const [accepted, setAccepted]         = useState(0);
   const [skipped, setSkipped]           = useState(0);
 
@@ -87,6 +94,50 @@ export default function HomeScreen() {
     await AsyncStorage.setItem(TUTORIAL_KEY, 'true');
   }, []);
 
+  // ── Subscribe to ScanningService events ───────────────────────────────────
+  useEffect(() => {
+    const unsubFound = scanningService.on<TaggedPhoto>('photo_found', photo => {
+      setCards(prev => {
+        // Transition to swiping on the very first photo found
+        if (prev.length === 0) {
+          setPhase('swiping');
+          AsyncStorage.getItem(TUTORIAL_KEY).then(shown => {
+            if (!shown) { setShowTutorial(true); setTimeout(startTutorialAnim, 300); }
+          });
+        }
+        return [...prev, photo];
+      });
+    });
+
+    const unsubProgress = scanningService.on('progress', (p) => {
+      setProgress(p);
+    });
+
+    const unsubComplete = scanningService.on('complete', () => {
+      setScanDone(true);
+      // If nothing was found at all, go to done screen
+      setCards(prev => {
+        if (prev.length === 0) setPhase('done');
+        return prev;
+      });
+    });
+
+    const unsubReset = scanningService.on('reset', () => {
+      setCards([]);
+      setIndex(0);
+      setProgress({ scanned: 0, total: 0, found: 0, errors: 0 });
+      setScanDone(false);
+      setPhase('permission');
+    });
+
+    return () => {
+      unsubFound();
+      unsubProgress();
+      unsubComplete();
+      unsubReset();
+    };
+  }, [startTutorialAnim]);
+
   const requestPermission = async () => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
@@ -101,8 +152,8 @@ export default function HomeScreen() {
   };
 
   const startScanning = async () => {
+    scanningService.reset();
     setPhase('scanning');
-    setProgress({ scanned: 0, total: 0, found: 0, errors: 0 });
 
     const { assets } = await MediaLibrary.getAssetsAsync({
       mediaType: 'photo',
@@ -117,22 +168,8 @@ export default function HomeScreen() {
       .filter(a => a.localUri || a.uri)
       .map(a => ({ ...a, uri: a.localUri ?? a.uri }));
 
-    const tagged = await scanCameraRoll(
-      photos as any,
-      (scanned, total, found, errors) => setProgress({ scanned, total, found, errors })
-    );
-
-    setCards(tagged);
-    setIndex(0);
-
-    if (tagged.length === 0) { setPhase('done'); return; }
-
-    const tutorialShown = await AsyncStorage.getItem(TUTORIAL_KEY);
-    setPhase('swiping');
-    if (!tutorialShown) {
-      setShowTutorial(true);
-      setTimeout(startTutorialAnim, 300);
-    }
+    // Fire-and-forget — results stream in via events above
+    scanningService.start(photos as any);
   };
 
   const handleSwipeRight = useCallback(async (tagged: TaggedPhoto) => {
@@ -157,10 +194,11 @@ export default function HomeScreen() {
   }, [showTutorial, dismissTutorial]);
 
   useEffect(() => {
-    if (phase === 'swiping' && index >= cards.length && cards.length > 0) {
+    // Only go to done when scan is also finished — there may be more cards coming
+    if (phase === 'swiping' && scanDone && index >= cards.length && cards.length > 0) {
       setPhase('done');
     }
-  }, [index, cards.length, phase]);
+  }, [index, cards.length, phase, scanDone]);
 
   // ── Permission ─────────────────────────────────────────────────────────────
   if (phase === 'permission') {
@@ -244,7 +282,7 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => { setAccepted(0); setSkipped(0); setCards([]); setIndex(0); startScanning(); }}
+            onPress={() => { setAccepted(0); setSkipped(0); setIndex(0); setScanDone(false); startScanning(); }}
           >
             <Ionicons name="refresh-outline" size={18} color={colors.white} />
             <Text style={styles.primaryBtnText}>Scan Again</Text>
@@ -259,6 +297,15 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Scanning-in-progress pill — visible while scan is still running */}
+      {!scanDone && (
+        <View style={styles.scanningPill}>
+          <Ionicons name="sparkles" size={12} color={colors.primary} />
+          <Text style={styles.scanningPillText}>
+            Scanning… {progress.scanned}/{progress.total} · {progress.found} found
+          </Text>
+        </View>
+      )}
       <View style={styles.swipeHeader}>
         <View>
           <Text style={styles.swipeLabel}>CAMERA ROLL</Text>
@@ -375,6 +422,8 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
   progressPct:  { fontSize: typography.sizes.sm, color: colors.midGray, fontFamily: typography.weights.semibold },
   scanError:    { fontSize: typography.sizes.xs, color: '#B45309', textAlign: 'center', marginTop: spacing.xs },
+  scanningPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#FFF0EF', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: 5, marginBottom: spacing.xs },
+  scanningPillText: { fontSize: typography.sizes.xs, color: colors.primary, fontFamily: typography.weights.medium },
 
   // Done
   doneIcon:  { marginBottom: spacing.md },

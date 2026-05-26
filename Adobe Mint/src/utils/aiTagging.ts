@@ -15,15 +15,29 @@ const STOCK_CATEGORIES: StockCategory[] = [
   'Arts & Culture',
 ];
 
-const SCAN_PROMPT = `You are an Adobe Stock expert and buyer. Analyze this photo and decide:
+const SCAN_PROMPT = `You are a maximally inclusive Adobe Stock curator. Your mission is to unlock the commercial value in everyday photos taken by regular people on their phones.
 
-1. Is it commercially valuable for stock photography? Consider:
-   - Would brands, media, or AI training companies pay for it?
-   - Is it technically good quality (sharp, well-exposed, composed)?
-   - Does it show a clear subject with commercial appeal?
-   - Reject: blurry, dark, cluttered, selfies with no context, screenshots, memes, casual snapshots.
+WHO IS BUYING THESE PHOTOS:
+- AI training companies need massive volumes of real-world, diverse, authentic images — technical quality barely matters, content variety is everything
+- Local content creators need hyper-local photos: specific streets, foods, faces, neighborhoods, markets — a blurry photo of a local market is still valuable
+- Bloggers, small businesses, social media managers need authentic non-stock-looking photos
+- Researchers and journalists need real documentation, not polished photography
 
-2. If stock-worthy, generate complete metadata.
+APPROVAL PHILOSOPHY — be extremely generous:
+- IGNORE: resolution, sharpness, grain, noise, exposure issues, composition rules
+- IGNORE: whether it looks "professional" — amateur authenticity is a feature, not a bug
+- IGNORE: lighting quality, color accuracy, camera shake, slight blur
+- APPROVE anything that shows a real subject, place, object, person, food, animal, texture, or scene
+- A grainy photo of a street vendor is more valuable than a perfect studio shot to the right buyer
+- When in doubt, ALWAYS APPROVE
+
+ONLY hard-reject (truly unsalvageable):
+- Completely black or completely white frames with no discernible content
+- Screenshots of apps, UIs, or text messages
+- Memes or images with overlaid text/stickers
+- Explicit sexual content
+
+2. If approving, generate metadata optimized for diverse buyer discovery.
 
 Return ONLY raw JSON (no markdown):
 {
@@ -60,9 +74,13 @@ export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null>
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        max_tokens: 500,
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
         messages: [
+          {
+            role: 'system',
+            content: SCAN_PROMPT,
+          },
           {
             role: 'user',
             content: [
@@ -70,7 +88,7 @@ export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null>
                 type: 'image_url',
                 image_url: { url: `data:image/jpeg;base64,${base64}`, detail: 'low' },
               },
-              { type: 'text', text: SCAN_PROMPT },
+              { type: 'text', text: 'Analyze this photo.' },
             ],
           },
         ],
@@ -139,38 +157,42 @@ export async function generateAITags(photo: Photo): Promise<TaggedPhoto> {
   };
 }
 
-// Run analyzeForStock on a batch with limited concurrency
+// Run analyzeForStock on a batch with limited concurrency.
+// onPhotoFound is called immediately each time a worthy photo is found — don't wait for the batch.
 // onProgress receives: scanned, total, found, errors
 export async function scanCameraRoll(
   photos: Photo[],
-  onProgress: (scanned: number, total: number, found: number, errors: number) => void
+  onProgress: (scanned: number, total: number, found: number, errors: number) => void,
+  onPhotoFound?: (photo: TaggedPhoto) => void,
 ): Promise<TaggedPhoto[]> {
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 6;
   const results: TaggedPhoto[] = [];
   let scanned = 0;
   let errors = 0;
 
   for (let i = 0; i < photos.length; i += CONCURRENCY) {
     const batch = photos.slice(i, i + CONCURRENCY);
-    const batchResults = await Promise.all(
+    await Promise.all(
       batch.map(async p => {
+        let result: TaggedPhoto | null = null;
         try {
-          return await analyzeForStock(p);
+          result = await analyzeForStock(p);
         } catch {
-          // Retry once after a short delay
           try {
             await new Promise(r => setTimeout(r, 1000));
-            return await analyzeForStock(p);
+            result = await analyzeForStock(p);
           } catch {
             errors++;
-            return null;
           }
         }
+        scanned++;
+        if (result) {
+          results.push(result);
+          onPhotoFound?.(result); // ← stream immediately, don't wait for batch
+        }
+        onProgress(scanned, photos.length, results.length, errors);
       })
     );
-    batchResults.forEach(r => { if (r) results.push(r); });
-    scanned += batch.length;
-    onProgress(scanned, photos.length, results.length, errors);
   }
 
   return results;
