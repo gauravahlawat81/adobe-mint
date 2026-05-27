@@ -25,7 +25,7 @@ export interface Submission {
   description: string;
   keywords: string[];
   category: string;
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  status: 'submitted' | 'reviewing' | 'approved' | 'rejected';
   thumbnail_uri: string | null;
   earnings: number;
   downloads: number;

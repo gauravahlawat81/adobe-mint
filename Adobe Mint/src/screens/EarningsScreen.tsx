@@ -24,7 +24,7 @@ const STATUS_FILTERS: Array<{ key: SubmissionStatus | 'all'; label: string }> = 
   { key: 'all',       label: 'All' },
   { key: 'approved',  label: 'Approved' },
   { key: 'reviewing', label: 'In Review' },
-  { key: 'pending',   label: 'Pending' },
+  { key: 'submitted', label: 'Submitted' },
   { key: 'rejected',  label: 'Rejected' },
 ];
 

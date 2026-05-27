@@ -14,7 +14,7 @@ export type StockCategory =
   | 'Sports & Action'
   | 'Arts & Culture';
 
-export type SubmissionStatus = 'pending' | 'reviewing' | 'approved' | 'rejected';
+export type SubmissionStatus = 'submitted' | 'reviewing' | 'approved' | 'rejected';
 
 export interface TaggedPhoto {
   photo: Photo;

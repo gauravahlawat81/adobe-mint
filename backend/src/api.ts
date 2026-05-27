@@ -47,7 +47,9 @@ apiRouter.post('/submissions', requireAuth, async (req: Request, res: Response) 
       return res.status(400).json({ error: 'title, keywords, and category are required' });
     }
 
-    const status = requires_review ? 'reviewing' : 'pending';
+    // 'submitted' = queued for direct Adobe Stock upload (no human in the loop)
+    // 'reviewing' = flagged by AI, needs human approval before going to Adobe Stock
+    const status = requires_review ? 'reviewing' : 'submitted';
     const sub = {
       id: uuid(),
       user_id: userId,

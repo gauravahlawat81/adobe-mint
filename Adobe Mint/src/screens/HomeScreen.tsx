@@ -176,6 +176,8 @@ export default function HomeScreen() {
     setAccepted(a => a + 1);
     setIndex(i => i + 1);
     if (showTutorial) dismissTutorial();
+
+    // Fire-and-forget — don't block the UI
     postSubmission({
       title:           tagged.title,
       description:     tagged.description,
@@ -184,7 +186,9 @@ export default function HomeScreen() {
       thumbnail_uri:   tagged.photo.uri,
       requires_review: tagged.requiresReview,
       review_reason:   tagged.reviewReason ?? null,
-    }).catch(() => {});
+    }).catch(() => {
+      // Silent fail — submissions are best-effort
+    });
   }, [showTutorial, dismissTutorial]);
 
   const handleSwipeLeft = useCallback((_tagged: TaggedPhoto) => {

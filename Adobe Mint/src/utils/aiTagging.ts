@@ -51,7 +51,12 @@ Return ONLY raw JSON (no markdown):
 }
 
 Category must be one of: ${STOCK_CATEGORIES.map(c => `"${c}"`).join(', ')}
-Title: max 70 chars. Keywords: exactly 15 items. requiresReview true only for nudity, violence, unconsented recognisable people, brand logos.`;
+Title: max 70 chars. Keywords: exactly 15 items.
+
+CRITICAL — requiresReview rules:
+Set requiresReview: false for 99.9% of photos. This includes: people, faces, crowds, nudity (artistic), brand logos visible in scenes, landmarks, everyday life — ALL fine.
+Set requiresReview: true ONLY for content that could create serious legal liability: child sexual abuse material, graphic gore/torture, or content that is clearly illegal in most jurisdictions.
+When in doubt → requiresReview: false. A human reviewer adds cost and delay — only flag truly exceptional cases.`;
 
 // Returns the tagged photo, null if not stock-worthy, or throws on API error
 export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null> {

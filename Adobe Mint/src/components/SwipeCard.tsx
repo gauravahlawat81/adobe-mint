@@ -116,11 +116,19 @@ export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSw
       {/* Photo */}
       <Image source={{ uri: tagged.photo.uri }} style={styles.photo} resizeMode="cover" />
 
-      {/* UPLOAD overlay */}
+      {/* Needs Review badge — shown permanently on flagged photos */}
+      {tagged.requiresReview && (
+        <View style={styles.reviewBadge}>
+          <Ionicons name="alert-circle" size={13} color="#92400E" />
+          <Text style={styles.reviewBadgeText}>Needs Review</Text>
+        </View>
+      )}
+
+      {/* UPLOAD / SEND FOR REVIEW overlay */}
       <Animated.View style={[styles.overlay, styles.overlayRight, { opacity: acceptOpacity }]}>
-        <View style={styles.overlayBadge}>
-          <Ionicons name="checkmark" size={28} color={colors.white} />
-          <Text style={styles.overlayText}>UPLOAD</Text>
+        <View style={[styles.overlayBadge, tagged.requiresReview && styles.overlayBadgeAmber]}>
+          <Ionicons name={tagged.requiresReview ? 'shield-checkmark' : 'checkmark'} size={28} color={colors.white} />
+          <Text style={styles.overlayText}>{tagged.requiresReview ? 'SEND FOR REVIEW' : 'UPLOAD'}</Text>
         </View>
       </Animated.View>
 
@@ -151,7 +159,9 @@ export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSw
         {tagged.requiresReview && (
           <View style={styles.reviewNote}>
             <Ionicons name="alert-circle-outline" size={14} color="#F59E0B" />
-            <Text style={styles.reviewNoteText}>Will be reviewed by a moderator before going live</Text>
+            <Text style={styles.reviewNoteText}>
+              Flagged for human review before publishing to Adobe Stock.{tagged.reviewReason ? ` Reason: ${tagged.reviewReason}` : ''}
+            </Text>
           </View>
         )}
 
@@ -216,6 +226,29 @@ const styles = StyleSheet.create({
   },
   overlayBadgeRed: {
     backgroundColor: '#DC2626',
+  },
+  overlayBadgeAmber: {
+    backgroundColor: '#D97706',
+  },
+  reviewBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    zIndex: 10,
+  },
+  reviewBadgeText: {
+    fontSize: 11,
+    fontFamily: typography.weights.semibold,
+    color: '#92400E',
   },
   overlayText: {
     color: colors.white,
