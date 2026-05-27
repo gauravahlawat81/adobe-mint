@@ -7,12 +7,14 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as MediaLibrary from 'expo-media-library';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { clearSession, loadSession, type Session } from '../utils/session';
 import { getStats, type Stats } from '../utils/api';
@@ -55,12 +57,12 @@ function SettingRow({ icon, label, value, onPress, toggle, toggleValue, onToggle
   );
 }
 
-export default function ProfileScreen() {
+export default function SettingsScreen() {
   const navigation = useNavigation<Nav>();
   const [notifications, setNotifications] = React.useState(true);
-  const [autoTag, setAutoTag] = React.useState(true);
   const [session, setSession] = React.useState<Session | null>(null);
   const [stats, setStats] = React.useState<Stats | null>(null);
+  const [photoPermission, setPhotoPermission] = React.useState<'granted' | 'limited' | 'denied' | 'undetermined'>('undetermined');
 
   React.useEffect(() => {
     loadSession().then(s => {
@@ -68,6 +70,22 @@ export default function ProfileScreen() {
       if (s) getStats().then(setStats).catch(() => {});
     });
   }, []);
+
+  // Refresh permission status every time user comes back to this tab
+  useFocusEffect(
+    React.useCallback(() => {
+      MediaLibrary.getPermissionsAsync().then(({ status, accessPrivileges }) => {
+        if (status === 'granted') {
+          // iOS 14+ supports 'limited' (selected photos only)
+          setPhotoPermission(accessPrivileges === 'limited' ? 'limited' : 'granted');
+        } else if (status === 'denied') {
+          setPhotoPermission('denied');
+        } else {
+          setPhotoPermission('undetermined');
+        }
+      });
+    }, [])
+  );
 
   const displayName = session?.name ?? 'Guest';
   const displayEmail = session?.email ?? 'No account signed in';
@@ -101,7 +119,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>Settings</Text>
 
         {/* User Card */}
         <View style={styles.userCard}>
@@ -150,6 +168,48 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Camera Roll Access */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Privacy</Text>
+          <View style={styles.settingGroup}>
+            <View style={styles.cameraAccessRow}>
+              <View style={styles.settingIcon}>
+                <Ionicons name="images-outline" size={20} color={colors.darkGray} />
+              </View>
+              <View style={styles.cameraAccessText}>
+                <Text style={styles.settingLabel}>Camera Roll Access</Text>
+                <Text style={[
+                  styles.permissionStatus,
+                  photoPermission === 'granted' && styles.permissionGranted,
+                  photoPermission === 'limited'  && styles.permissionLimited,
+                  photoPermission === 'denied'   && styles.permissionDenied,
+                ]}>
+                  {photoPermission === 'granted'     && '✓ All Photos'}
+                  {photoPermission === 'limited'     && '⚠ Selected Photos Only'}
+                  {photoPermission === 'denied'      && '✗ No Access'}
+                  {photoPermission === 'undetermined' && 'Not Set'}
+                </Text>
+                {photoPermission === 'limited' && (
+                  <Text style={styles.permissionHint}>
+                    App can only scan photos you've selected. Grant full access for best results.
+                  </Text>
+                )}
+                {photoPermission === 'denied' && (
+                  <Text style={styles.permissionHint}>
+                    Enable access in Settings to scan your camera roll.
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.changeAccessBtn}
+                onPress={() => Linking.openSettings()}
+              >
+                <Text style={styles.changeAccessText}>Change</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* Preferences */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
@@ -160,13 +220,6 @@ export default function ProfileScreen() {
               toggle
               toggleValue={notifications}
               onToggle={setNotifications}
-            />
-            <SettingRow
-              icon="sparkles-outline"
-              label="Auto AI Tagging"
-              toggle
-              toggleValue={autoTag}
-              onToggle={setAutoTag}
             />
             <SettingRow
               icon="language-outline"
@@ -391,5 +444,43 @@ const styles = StyleSheet.create({
     color: colors.lightGray,
     textAlign: 'center',
     marginTop: spacing.lg,
+  },
+  cameraAccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  cameraAccessText: {
+    flex: 1,
+    gap: 3,
+  },
+  permissionStatus: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.weights.semibold,
+    color: colors.midGray,
+  },
+  permissionGranted: { color: '#16A34A' },
+  permissionLimited: { color: '#D97706' },
+  permissionDenied:  { color: colors.error },
+  permissionHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.midGray,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  changeAccessBtn: {
+    backgroundColor: colors.offWhite,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  changeAccessText: {
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.weights.semibold,
+    color: colors.dark,
   },
 });

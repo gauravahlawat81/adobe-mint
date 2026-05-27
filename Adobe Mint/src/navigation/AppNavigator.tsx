@@ -11,7 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import TaggingScreen from '../screens/TaggingScreen';
 import UploadSuccessScreen from '../screens/UploadSuccessScreen';
 import EarningsScreen from '../screens/EarningsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -43,7 +43,7 @@ function MainTabs() {
           } else if (route.name === 'Earnings') {
             iconName = focused ? 'trending-up' : 'trending-up-outline';
           } else {
-            iconName = focused ? 'person' : 'person-outline';
+            iconName = focused ? 'settings' : 'settings-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -51,7 +51,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Discover' }} />
       <Tab.Screen name="Earnings" component={EarningsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
