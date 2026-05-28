@@ -11,24 +11,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import EarningsCard from '../components/EarningsCard';
 import SubmissionRow from '../components/SubmissionRow';
 import { getSubmissions, getStats, type Submission, type Stats } from '../utils/api';
-import type { SubmissionStatus } from '../types';
+import type { SubmissionStatus, RootStackParamList } from '../types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const { width } = Dimensions.get('window');
 const CHART_HEIGHT = 100;
 
 const STATUS_FILTERS: Array<{ key: SubmissionStatus | 'all'; label: string }> = [
   { key: 'all',       label: 'All' },
-  { key: 'approved',  label: 'Approved' },
+  { key: 'submitted', label: 'Uploaded' },
   { key: 'reviewing', label: 'In Review' },
-  { key: 'submitted', label: 'Submitted' },
   { key: 'rejected',  label: 'Rejected' },
 ];
 
 export default function EarningsScreen() {
+  const navigation = useNavigation<Nav>();
   const [filter, setFilter] = useState<SubmissionStatus | 'all'>('all');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -102,9 +106,9 @@ export default function EarningsScreen() {
                 {growthPct >= 0 ? '+' : ''}{growthPct}% vs last month
               </Text>
             </View>
-          ) : (
-            <Text style={styles.growthText}>Submit photos to start earning</Text>
-          )}
+          ) : submissions.length === 0 ? (
+            <Text style={styles.growthText}>Upload photos to start earning</Text>
+          ) : null}
         </View>
 
         {/* Stats Row */}
@@ -123,9 +127,9 @@ export default function EarningsScreen() {
           />
           <View style={{ width: spacing.sm }} />
           <EarningsCard
-            label="Approved"
-            value={String(stats?.approvedCount ?? 0)}
-            subLabel={`of ${stats?.totalCount ?? 0} submitted`}
+            label="Uploaded"
+            value={String(stats?.totalCount ?? 0)}
+            subLabel="All time"
           />
         </View>
 
@@ -153,9 +157,9 @@ export default function EarningsScreen() {
 
         {/* Submissions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Submissions</Text>
+          <Text style={styles.sectionTitle}>Uploads</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <View style={styles.filterRow}>
             {STATUS_FILTERS.map(f => (
               <TouchableOpacity
                 key={f.key}
@@ -167,31 +171,50 @@ export default function EarningsScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
           <View style={styles.submissionList}>
             {filtered.length === 0 ? (
               <Text style={styles.emptyText}>
-                {submissions.length === 0 ? 'No submissions yet. Upload some photos!' : 'No submissions in this category.'}
+                {submissions.length === 0 ? 'No uploads yet. Upload some photos!' : 'No uploads in this category.'}
               </Text>
             ) : (
-              filtered.map(s => (
-                <SubmissionRow
-                  key={s.id}
-                  submission={{
-                    id:           s.id,
-                    thumbnailUri: s.thumbnail_uri ?? `https://picsum.photos/seed/${s.id}/200/200`,
-                    title:        s.title,
-                    keywords:     s.keywords,
-                    category:     s.category as any,
-                    status:       s.status,
-                    submittedAt:  new Date(s.submittedAt),
-                    reviewedAt:   s.reviewedAt ? new Date(s.reviewedAt) : undefined,
-                    earnings:     s.earnings,
-                    downloads:    s.downloads,
-                  }}
-                />
-              ))
+              filtered.map(s => {
+                const thumb = s.thumbnail_uri ?? `https://picsum.photos/seed/${s.id}/200/200`;
+                return (
+                  <SubmissionRow
+                    key={s.id}
+                    onPress={() => navigation.navigate('SubmissionDetail', {
+                      submission: {
+                        id:             s.id,
+                        thumbnailUri:   thumb,
+                        title:          s.title,
+                        description:    s.description,
+                        keywords:       s.keywords,
+                        category:       s.category,
+                        status:         s.status,
+                        requiresReview: s.requiresReview,
+                        reviewReason:   s.reviewReason,
+                        submittedAt:    s.submittedAt,
+                        earnings:       s.earnings,
+                        downloads:      s.downloads,
+                      },
+                    })}
+                    submission={{
+                      id:           s.id,
+                      thumbnailUri: thumb,
+                      title:        s.title,
+                      keywords:     s.keywords,
+                      category:     s.category as any,
+                      status:       s.status,
+                      submittedAt:  new Date(s.submittedAt),
+                      reviewedAt:   s.reviewedAt ? new Date(s.reviewedAt) : undefined,
+                      earnings:     s.earnings,
+                      downloads:    s.downloads,
+                    }}
+                  />
+                );
+              })
             )}
           </View>
         </View>
@@ -236,9 +259,11 @@ const styles = StyleSheet.create({
   barLabel:       { fontSize: typography.sizes.xs, color: colors.midGray, marginTop: spacing.xs },
   barLabelActive: { color: colors.primary, fontFamily: typography.weights.semibold },
   barAmount:      { fontSize: typography.sizes.xs, color: colors.primary, fontFamily: typography.weights.bold, marginTop: 2 },
-  filterRow:      { gap: spacing.sm, marginBottom: spacing.lg, paddingRight: spacing.lg },
+  filterRow:      { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.lg },
   filterTab: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs, paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white,
   },
   filterTabActive:  { backgroundColor: colors.dark, borderColor: colors.dark },

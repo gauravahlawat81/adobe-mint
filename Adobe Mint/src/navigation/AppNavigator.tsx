@@ -12,6 +12,7 @@ import TaggingScreen from '../screens/TaggingScreen';
 import UploadSuccessScreen from '../screens/UploadSuccessScreen';
 import EarningsScreen from '../screens/EarningsScreen';
 import SettingsScreen from '../screens/ProfileScreen';
+import SubmissionDetailScreen from '../screens/SubmissionDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -77,6 +78,11 @@ export default function AppNavigator({ isOnboarded }: AppNavigatorProps) {
         name="UploadSuccess"
         component={UploadSuccessScreen}
         options={{ animation: 'fade', gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="SubmissionDetail"
+        component={SubmissionDetailScreen}
+        options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
       />
     </Stack.Navigator>
   );

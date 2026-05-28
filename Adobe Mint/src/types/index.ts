@@ -44,11 +44,27 @@ export interface MonthlyEarnings {
   amount: number;
 }
 
+export type SubmissionDetailParams = {
+  id: string;
+  thumbnailUri: string;
+  title: string;
+  description?: string;
+  keywords: string[];
+  category: string;
+  status: SubmissionStatus;
+  requiresReview: boolean;
+  reviewReason?: string | null;
+  submittedAt: string;
+  earnings: number;
+  downloads: number;
+};
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
   Tagging: { photos: Photo[] };
   UploadSuccess: { count: number; flaggedCount: number };
+  SubmissionDetail: { submission: SubmissionDetailParams };
 };
 
 export type TabParamList = {

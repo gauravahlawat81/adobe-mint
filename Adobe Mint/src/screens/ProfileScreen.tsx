@@ -8,6 +8,7 @@ import {
   Switch,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { clearSession, loadSession, type Session } from '../utils/session';
 import { getStats, type Stats } from '../utils/api';
@@ -140,8 +142,8 @@ export default function SettingsScreen() {
         {/* Stats */}
         <View style={styles.statsGrid}>
           <StatBox label="Total Earned" value={`$${(stats?.totalEarnings ?? 0).toFixed(2)}`} />
-          <StatBox label="Photos Approved" value={String(stats?.approvedCount ?? 0)} />
-          <StatBox label="Submitted" value={String(stats?.totalCount ?? 0)} />
+          <StatBox label="Pending Approval" value={String(stats?.reviewingCount ?? 0)} />
+          <StatBox label="Uploaded" value={String(stats?.totalCount ?? 0)} />
           <StatBox label="Downloads" value={String(stats?.totalDownloads ?? 0)} />
         </View>
 
@@ -200,12 +202,23 @@ export default function SettingsScreen() {
                   </Text>
                 )}
               </View>
-              <TouchableOpacity
-                style={styles.changeAccessBtn}
-                onPress={() => Linking.openSettings()}
-              >
-                <Text style={styles.changeAccessText}>Change</Text>
-              </TouchableOpacity>
+              {photoPermission !== 'granted' && (
+                <TouchableOpacity
+                  style={styles.changeAccessBtn}
+                  onPress={() => {
+                    if (Platform.OS === 'android') {
+                      IntentLauncher.startActivityAsync(
+                        IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                        { data: 'package:com.adobe.mint' }
+                      ).catch(() => Linking.openSettings());
+                    } else {
+                      Linking.openSettings();
+                    }
+                  }}
+                >
+                  <Text style={styles.changeAccessText}>Allow Access</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

@@ -39,6 +39,7 @@ export interface Stats {
   totalEarnings: number;
   totalDownloads: number;
   approvedCount: number;
+  reviewingCount: number;
   totalCount: number;
   monthly: Array<{ month: string; year_month: string; amount: number }>;
 }

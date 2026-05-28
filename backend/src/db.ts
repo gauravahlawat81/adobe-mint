@@ -105,6 +105,7 @@ export async function getStats(userId: string) {
        COALESCE(SUM(earnings), 0)                          AS total_earnings,
        COALESCE(SUM(downloads), 0)                         AS total_downloads,
        COUNT(*) FILTER (WHERE status = 'approved')         AS approved_count,
+       COUNT(*) FILTER (WHERE status = 'reviewing')        AS reviewing_count,
        COUNT(*)                                            AS total_count
      FROM submissions WHERE user_id = $1`,
     [userId]
@@ -127,6 +128,7 @@ export async function getStats(userId: string) {
     totalEarnings:  parseFloat(totals.total_earnings),
     totalDownloads: parseInt(totals.total_downloads),
     approvedCount:  parseInt(totals.approved_count),
+    reviewingCount: parseInt(totals.reviewing_count),
     totalCount:     parseInt(totals.total_count),
     monthly:        monthly.reverse(),
   };

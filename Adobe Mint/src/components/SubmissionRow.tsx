@@ -1,20 +1,22 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import type { Submission, SubmissionStatus } from '../types';
 
 const statusConfig: Record<SubmissionStatus, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Pending', color: colors.statusPending, bg: '#EBF3FE' },
+  submitted: { label: 'Uploaded',  color: colors.statusPending, bg: '#EBF3FE' },
   reviewing: { label: 'In Review', color: colors.statusReviewing, bg: '#FDF3E4' },
-  approved: { label: 'Approved', color: colors.statusApproved, bg: '#E8F8F3' },
-  rejected: { label: 'Rejected', color: colors.statusRejected, bg: '#FEECEC' },
+  approved:  { label: 'Approved',  color: colors.statusApproved, bg: '#E8F8F3' },
+  rejected:  { label: 'Rejected',  color: colors.statusRejected, bg: '#FEECEC' },
 };
 
 interface SubmissionRowProps {
   submission: Submission;
+  onPress?: () => void;
 }
 
-export default function SubmissionRow({ submission }: SubmissionRowProps) {
+export default function SubmissionRow({ submission, onPress }: SubmissionRowProps) {
   const status = statusConfig[submission.status];
   const dateStr = submission.submittedAt.toLocaleDateString('en-US', {
     month: 'short',
@@ -22,7 +24,7 @@ export default function SubmissionRow({ submission }: SubmissionRowProps) {
   });
 
   return (
-    <View style={styles.row}>
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
       <Image source={{ uri: submission.thumbnailUri }} style={styles.thumbnail} />
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{submission.title}</Text>
@@ -38,7 +40,10 @@ export default function SubmissionRow({ submission }: SubmissionRowProps) {
       <View style={[styles.badge, { backgroundColor: status.bg }]}>
         <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
       </View>
-    </View>
+      {onPress && (
+        <Ionicons name="chevron-forward" size={16} color={colors.lightGray} style={styles.chevron} />
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -83,5 +88,8 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: typography.sizes.xs,
     fontFamily: typography.weights.semibold,
+  },
+  chevron: {
+    marginLeft: spacing.xs,
   },
 });
