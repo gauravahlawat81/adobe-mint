@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import type { RootStackParamList, SubmissionStatus } from '../types';
+import { EditableText, KeywordsEditor, CategoryPicker } from '../components/EditableField';
+import { updateSubmission, deleteSubmission } from '../utils/api';
+import type { RootStackParamList, SubmissionStatus, StockCategory } from '../types';
 
 const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = width - spacing.lg * 2;
@@ -33,12 +37,66 @@ export default function SubmissionDetailScreen() {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<Route>();
   const s = params.submission;
+
+  // Local editable state (optimistic)
+  const [title, setTitle]             = useState(s.title);
+  const [description, setDescription] = useState(s.description ?? '');
+  const [keywords, setKeywords]       = useState<string[]>(s.keywords);
+  const [category, setCategory]       = useState<StockCategory>(s.category as StockCategory);
+  const [saving, setSaving]           = useState(false);
+  const [deleting, setDeleting]       = useState(false);
+
   const status = statusConfig[s.status];
   const date = new Date(s.submittedAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+    month: 'short', day: 'numeric', year: 'numeric',
   });
+
+  // Persist an edit. Optimistically updates local state, reverts the field on failure.
+  const persist = async (next: { title?: string; description?: string; keywords?: string[]; category?: StockCategory }) => {
+    const payload = {
+      title:       next.title       ?? title,
+      description: next.description ?? description,
+      keywords:    next.keywords    ?? keywords,
+      category:    next.category    ?? category,
+    };
+    setSaving(true);
+    try {
+      await updateSubmission(s.id, payload);
+    } catch {
+      Alert.alert('Could not save', 'Your change was not saved. Please try again.');
+      // Revert
+      setTitle(s.title);
+      setDescription(s.description ?? '');
+      setKeywords(s.keywords);
+      setCategory(s.category as StockCategory);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete photo?',
+      'This permanently removes the photo and its listing from Adobe Stock. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteSubmission(s.id);
+              navigation.goBack();
+            } catch {
+              setDeleting(false);
+              Alert.alert('Could not delete', 'Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -48,20 +106,21 @@ export default function SubmissionDetailScreen() {
           <Ionicons name="close" size={24} color={colors.dark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Submission</Text>
-        <View style={{ width: 32 }} />
+        <View style={styles.savingSlot}>
+          {saving && <ActivityIndicator size="small" color={colors.primary} />}
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           {/* Photo */}
           <Image source={{ uri: s.thumbnailUri }} style={styles.photo} resizeMode="cover" />
 
-          {/* Status badge (top-right) */}
+          {/* Status badge */}
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
             <Text style={[styles.statusBadgeText, { color: status.color }]}>{status.label}</Text>
           </View>
 
-          {/* Needs Review pill if applicable */}
           {s.requiresReview && (
             <View style={styles.reviewBadge}>
               <Ionicons name="alert-circle" size={13} color="#92400E" />
@@ -71,12 +130,27 @@ export default function SubmissionDetailScreen() {
 
           {/* Metadata */}
           <View style={styles.meta}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{s.category}</Text>
-            </View>
+            <Text style={styles.fieldLabel}>CATEGORY</Text>
+            <CategoryPicker value={category} onSave={c => { setCategory(c); persist({ category: c }); }} />
 
-            <Text style={styles.title}>{s.title}</Text>
-            {s.description ? <Text style={styles.description}>{s.description}</Text> : null}
+            <Text style={styles.fieldLabel}>TITLE</Text>
+            <EditableText
+              value={title}
+              label="Title"
+              onSave={v => { setTitle(v); persist({ title: v }); }}
+              textStyle={styles.title}
+              placeholder="Add a title"
+            />
+
+            <Text style={styles.fieldLabel}>DESCRIPTION</Text>
+            <EditableText
+              value={description}
+              label="Description"
+              onSave={v => { setDescription(v); persist({ description: v }); }}
+              multiline
+              textStyle={styles.description}
+              placeholder="Add a description"
+            />
 
             <View style={styles.divider} />
 
@@ -90,9 +164,7 @@ export default function SubmissionDetailScreen() {
               <>
                 <View style={styles.infoRow}>
                   <Ionicons name="cash-outline" size={14} color={colors.success} />
-                  <Text style={[styles.infoText, { color: colors.success }]}>
-                    ${s.earnings.toFixed(2)} earned
-                  </Text>
+                  <Text style={[styles.infoText, { color: colors.success }]}>${s.earnings.toFixed(2)} earned</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Ionicons name="download-outline" size={14} color={colors.midGray} />
@@ -108,22 +180,25 @@ export default function SubmissionDetailScreen() {
               </View>
             ) : null}
 
-            {/* Keywords */}
-            {s.keywords.length > 0 && (
-              <>
-                <View style={styles.divider} />
-                <Text style={styles.sectionLabel}>Keywords</Text>
-                <View style={styles.keywords}>
-                  {s.keywords.map(kw => (
-                    <View key={kw} style={styles.kwChip}>
-                      <Text style={styles.kwText}>{kw}</Text>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
+            <View style={styles.divider} />
+
+            <Text style={styles.fieldLabel}>KEYWORDS</Text>
+            <KeywordsEditor keywords={keywords} onSave={kw => { setKeywords(kw); persist({ keywords: kw }); }} />
           </View>
         </View>
+
+        {/* Delete */}
+        <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete} disabled={deleting} activeOpacity={0.8}>
+          {deleting ? (
+            <ActivityIndicator size="small" color={colors.error} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={18} color={colors.error} />
+              <Text style={styles.deleteText}>Delete Photo</Text>
+            </>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.deleteHint}>Removes this photo and its listing from Adobe Stock.</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -140,18 +215,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  closeBtn: {
-    width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.weights.semibold,
-    color: colors.dark,
-  },
-  scroll: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-  },
+  closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: typography.sizes.md, fontFamily: typography.weights.semibold, color: colors.dark },
+  savingSlot: { width: 32, alignItems: 'flex-end' },
+  scroll: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   card: {
     width: CARD_WIDTH,
     backgroundColor: colors.white,
@@ -165,121 +232,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  photo: {
-    width: '100%',
-    height: CARD_HEIGHT * 0.55,
-    backgroundColor: colors.offWhite,
-  },
+  photo: { width: '100%', height: CARD_HEIGHT * 0.5, backgroundColor: colors.offWhite },
   statusBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
+    position: 'absolute', top: spacing.md, left: spacing.md,
+    paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full,
   },
-  statusBadgeText: {
-    fontSize: 11,
-    fontFamily: typography.weights.semibold,
-  },
+  statusBadgeText: { fontSize: 11, fontFamily: typography.weights.semibold },
   reviewBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
+    position: 'absolute', top: spacing.md, right: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#F59E0B',
+    paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full,
   },
-  reviewBadgeText: {
-    fontSize: 11,
-    fontFamily: typography.weights.semibold,
-    color: '#92400E',
-  },
-  meta: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF0EF',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
-  },
-  categoryText: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.weights.semibold,
-    color: colors.primary,
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.weights.bold,
-    color: colors.dark,
-    lineHeight: 26,
-  },
-  description: {
-    fontSize: typography.sizes.sm,
-    color: colors.midGray,
-    lineHeight: 20,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.sm,
-  },
-  sectionLabel: {
+  reviewBadgeText: { fontSize: 11, fontFamily: typography.weights.semibold, color: '#92400E' },
+  meta: { padding: spacing.lg, gap: spacing.xs },
+  fieldLabel: {
     fontSize: typography.sizes.xs,
     fontFamily: typography.weights.semibold,
     color: colors.midGray,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  infoText: {
-    fontSize: typography.sizes.sm,
-    color: colors.darkGray,
-  },
+  title: { fontSize: typography.sizes.lg, fontFamily: typography.weights.bold, color: colors.dark, lineHeight: 26 },
+  description: { fontSize: typography.sizes.sm, color: colors.darkGray, lineHeight: 20 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  infoText: { fontSize: typography.sizes.sm, color: colors.darkGray },
   reviewNote: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: '#FFFBEB', padding: spacing.sm, borderRadius: borderRadius.sm, marginTop: spacing.xs,
+  },
+  reviewNoteText: { fontSize: typography.sizes.xs, color: '#92400E', flex: 1 },
+  deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: '#FFFBEB',
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.xs,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    backgroundColor: '#FEECEC',
   },
-  reviewNoteText: {
-    fontSize: typography.sizes.xs,
-    color: '#92400E',
-    flex: 1,
-  },
-  keywords: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  kwChip: {
-    backgroundColor: colors.offWhite,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
-  },
-  kwText: {
-    fontSize: 11,
-    color: colors.darkGray,
-    fontFamily: typography.weights.medium,
-  },
+  deleteText: { fontSize: typography.sizes.md, fontFamily: typography.weights.bold, color: colors.error },
+  deleteHint: { fontSize: typography.sizes.xs, color: colors.midGray, textAlign: 'center', marginTop: spacing.sm },
 });

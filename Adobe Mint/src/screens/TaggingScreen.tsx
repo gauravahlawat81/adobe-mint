@@ -145,6 +145,7 @@ export default function TaggingScreen() {
             thumbnail_uri:   tagged.photo.uri,
             requires_review: tagged.requiresReview,
             review_reason:   tagged.reviewReason ?? null,
+            photo_hash:      tagged.photoHash ?? null,
           }).catch(() => null) // best-effort; still navigate on partial failure
         )
       );

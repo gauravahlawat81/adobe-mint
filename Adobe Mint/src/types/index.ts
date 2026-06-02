@@ -24,6 +24,7 @@ export interface TaggedPhoto {
   category: StockCategory;
   requiresReview: boolean;
   reviewReason?: string;
+  photoHash?: string;
 }
 
 export interface Submission {

@@ -1,6 +1,17 @@
 import * as FileSystem from 'expo-file-system';
+import * as Crypto from 'expo-crypto';
 import type { Photo, TaggedPhoto, StockCategory } from '../types';
 import { OPENAI_API_KEY } from '../config';
+
+// Read a photo file as base64 and compute its SHA-256 content hash.
+// The hash is used for exact-duplicate detection (same file = same hash).
+export async function readPhotoBase64AndHash(photo: Photo): Promise<{ base64: string; hash: string }> {
+  const base64 = await FileSystem.readAsStringAsync(photo.uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, base64);
+  return { base64, hash };
+}
 
 const STOCK_CATEGORIES: StockCategory[] = [
   'Nature & Landscapes',
@@ -58,16 +69,21 @@ Set requiresReview: false for 99.9% of photos. This includes: people, faces, cro
 Set requiresReview: true ONLY for content that could create serious legal liability: child sexual abuse material, graphic gore/torture, or content that is clearly illegal in most jurisdictions.
 When in doubt → requiresReview: false. A human reviewer adds cost and delay — only flag truly exceptional cases.`;
 
-// Returns the tagged photo, null if not stock-worthy, or throws on API error
-export async function analyzeForStock(photo: Photo): Promise<TaggedPhoto | null> {
+// Returns the tagged photo, null if not stock-worthy, or throws on API error.
+// Pass precomputedBase64 to avoid re-reading the file when the caller already has it.
+export async function analyzeForStock(photo: Photo, precomputedBase64?: string): Promise<TaggedPhoto | null> {
   let base64: string;
-  try {
-    base64 = await FileSystem.readAsStringAsync(photo.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-  } catch (e) {
-    console.warn('[aiTagging] Failed to read photo file:', photo.uri, e);
-    throw new Error('file_read_failed');
+  if (precomputedBase64 != null) {
+    base64 = precomputedBase64;
+  } else {
+    try {
+      base64 = await FileSystem.readAsStringAsync(photo.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    } catch (e) {
+      console.warn('[aiTagging] Failed to read photo file:', photo.uri, e);
+      throw new Error('file_read_failed');
+    }
   }
 
   const requestBody = {
@@ -180,10 +196,13 @@ export async function generateAITags(photo: Photo): Promise<TaggedPhoto> {
 // Run analyzeForStock on a batch with limited concurrency.
 // onPhotoFound is called immediately each time a worthy photo is found — don't wait for the batch.
 // onProgress receives: scanned, total, found, errors
+// knownHashes: SHA-256 hashes of photos the user has already uploaded — these are skipped
+//   entirely (no OpenAI call). It's also used to dedupe identical files within this scan.
 export async function scanCameraRoll(
   photos: Photo[],
   onProgress: (scanned: number, total: number, found: number, errors: number) => void,
   onPhotoFound?: (photo: TaggedPhoto) => void,
+  knownHashes: Set<string> = new Set(),
 ): Promise<TaggedPhoto[]> {
   const CONCURRENCY = 6;
   const results: TaggedPhoto[] = [];
@@ -196,14 +215,25 @@ export async function scanCameraRoll(
       batch.map(async p => {
         let result: TaggedPhoto | null = null;
         try {
-          result = await analyzeForStock(p);
-        } catch {
-          try {
-            await new Promise(r => setTimeout(r, 1000));
-            result = await analyzeForStock(p);
-          } catch {
-            errors++;
+          const { base64, hash } = await readPhotoBase64AndHash(p);
+
+          // Skip already-uploaded photos and exact duplicates within this scan
+          if (knownHashes.has(hash)) {
+            scanned++;
+            onProgress(scanned, photos.length, results.length, errors);
+            return;
           }
+          knownHashes.add(hash);
+
+          try {
+            result = await analyzeForStock(p, base64);
+          } catch {
+            await new Promise(r => setTimeout(r, 1000));
+            result = await analyzeForStock(p, base64);
+          }
+          if (result) result.photoHash = hash;
+        } catch {
+          errors++;
         }
         scanned++;
         if (result) {

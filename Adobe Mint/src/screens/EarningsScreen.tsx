@@ -8,15 +8,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import EarningsCard from '../components/EarningsCard';
-import SubmissionRow from '../components/SubmissionRow';
-import { getSubmissions, getStats, type Submission, type Stats } from '../utils/api';
+import SwipeableSubmissionRow from '../components/SwipeableSubmissionRow';
+import { getSubmissions, getStats, deleteSubmission, type Submission, type Stats } from '../utils/api';
 import type { SubmissionStatus, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -53,6 +54,34 @@ export default function EarningsScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Refresh whenever the tab regains focus (e.g. after editing/deleting in the detail screen)
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const handleDelete = useCallback((sub: Submission) => {
+    Alert.alert(
+      'Delete photo?',
+      `"${sub.title}" will be permanently removed from Adobe Stock. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            // Optimistically remove from the list
+            setSubmissions(prev => prev.filter(x => x.id !== sub.id));
+            try {
+              await deleteSubmission(sub.id);
+              load(); // refresh stats/counts
+            } catch {
+              Alert.alert('Could not delete', 'Please try again.');
+              load(); // restore correct state
+            }
+          },
+        },
+      ]
+    );
+  }, [load]);
 
   const filtered = filter === 'all'
     ? submissions
@@ -182,8 +211,9 @@ export default function EarningsScreen() {
               filtered.map(s => {
                 const thumb = s.thumbnail_uri ?? `https://picsum.photos/seed/${s.id}/200/200`;
                 return (
-                  <SubmissionRow
+                  <SwipeableSubmissionRow
                     key={s.id}
+                    onRequestDelete={() => handleDelete(s)}
                     onPress={() => navigation.navigate('SubmissionDetail', {
                       submission: {
                         id:             s.id,

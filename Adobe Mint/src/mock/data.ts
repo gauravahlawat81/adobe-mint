@@ -52,7 +52,7 @@ export const mockSubmissions: Submission[] = [
     title: 'Colorful Street Art Abstract',
     keywords: ['abstract', 'art', 'colorful', 'graffiti', 'urban', 'street', 'creative', 'wall'],
     category: 'Abstract & Textures',
-    status: 'pending',
+    status: 'submitted',
     submittedAt: new Date('2026-04-05'),
   },
   {

@@ -73,9 +73,10 @@ export default function SettingsScreen() {
     });
   }, []);
 
-  // Refresh permission status every time user comes back to this tab
+  // Refresh permission status + stats every time user comes back to this tab
   useFocusEffect(
     React.useCallback(() => {
+      getStats().then(setStats).catch(() => {});
       MediaLibrary.getPermissionsAsync().then(({ status, accessPrivileges }) => {
         if (status === 'granted') {
           // iOS 14+ supports 'limited' (selected photos only)
@@ -202,23 +203,23 @@ export default function SettingsScreen() {
                   </Text>
                 )}
               </View>
-              {photoPermission !== 'granted' && (
-                <TouchableOpacity
-                  style={styles.changeAccessBtn}
-                  onPress={() => {
-                    if (Platform.OS === 'android') {
-                      IntentLauncher.startActivityAsync(
-                        IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-                        { data: 'package:com.adobe.mint' }
-                      ).catch(() => Linking.openSettings());
-                    } else {
-                      Linking.openSettings();
-                    }
-                  }}
-                >
-                  <Text style={styles.changeAccessText}>Allow Access</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={[styles.changeAccessBtn, photoPermission !== 'granted' && styles.changeAccessBtnPrimary]}
+                onPress={() => {
+                  if (Platform.OS === 'android') {
+                    IntentLauncher.startActivityAsync(
+                      IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                      { data: 'package:com.adobe.mint' }
+                    ).catch(() => Linking.openSettings());
+                  } else {
+                    Linking.openSettings();
+                  }
+                }}
+              >
+                <Text style={[styles.changeAccessText, photoPermission !== 'granted' && styles.changeAccessTextPrimary]}>
+                  {photoPermission === 'granted' ? 'Change' : 'Allow Access'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -495,5 +496,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     fontFamily: typography.weights.semibold,
     color: colors.dark,
+  },
+  changeAccessBtnPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  changeAccessTextPrimary: {
+    color: colors.white,
   },
 });

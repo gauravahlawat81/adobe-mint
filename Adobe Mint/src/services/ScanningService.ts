@@ -93,7 +93,7 @@ class ScanningService {
    * Start scanning. Fire-and-forget — returns immediately.
    * If a scan is already running, does nothing (idempotent).
    */
-  start(photos: Photo[]): void {
+  start(photos: Photo[], knownHashes: Set<string> = new Set()): void {
     if (this._state.status === 'running') return;
 
     this._scanId++;
@@ -123,6 +123,8 @@ class ScanningService {
         this._emit('photo_found', photo);
       },
 
+      knownHashes,
+
     ).then(() => {
       if (this._scanId !== thisScanId) return;
       this._state.status = 'complete';
@@ -134,6 +136,15 @@ class ScanningService {
       this._state.status = 'complete';
       this._emit('complete', { ...this._state.progress });
     });
+  }
+
+  /**
+   * Replace a card in place after the user edits its metadata.
+   * Matched by photo.id so it survives tab switches / restores.
+   */
+  updateCard(updated: TaggedPhoto): void {
+    const i = this._state.cards.findIndex(c => c.photo.id === updated.photo.id);
+    if (i !== -1) this._state.cards[i] = updated;
   }
 
   /**

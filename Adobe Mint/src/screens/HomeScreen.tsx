@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import { postSubmission } from '../utils/api';
+import { postSubmission, getSubmissionHashes } from '../utils/api';
 import { scanningService } from '../services/ScanningService';
 import SwipeCard, { CARD_WIDTH } from '../components/SwipeCard';
 import type { TaggedPhoto } from '../types';
@@ -168,8 +168,17 @@ export default function HomeScreen() {
       .filter(a => a.localUri || a.uri)
       .map(a => ({ ...a, uri: a.localUri ?? a.uri }));
 
+    // Fetch hashes of already-uploaded photos so they're skipped during the scan.
+    // Best-effort: if it fails (e.g. guest/offline), we just scan everything.
+    let knownHashes = new Set<string>();
+    try {
+      knownHashes = new Set(await getSubmissionHashes());
+    } catch {
+      // ignore — proceed without dedup
+    }
+
     // Fire-and-forget — results stream in via events above
-    scanningService.start(photos as any);
+    scanningService.start(photos as any, knownHashes);
   };
 
   const handleSwipeRight = useCallback(async (tagged: TaggedPhoto) => {
@@ -186,8 +195,9 @@ export default function HomeScreen() {
       thumbnail_uri:   tagged.photo.uri,
       requires_review: tagged.requiresReview,
       review_reason:   tagged.reviewReason ?? null,
+      photo_hash:      tagged.photoHash ?? null,
     }).catch(() => {
-      // Silent fail — submissions are best-effort
+      // Silent fail — submissions are best-effort (backend also rejects dupes via unique index)
     });
   }, [showTutorial, dismissTutorial]);
 
@@ -196,6 +206,13 @@ export default function HomeScreen() {
     setIndex(i => i + 1);
     if (showTutorial) dismissTutorial();
   }, [showTutorial, dismissTutorial]);
+
+  // User edited a card's metadata before swiping — update state (and the service so it
+  // survives tab switches). The submit handler reads the latest card, so edits are sent.
+  const handleEditCard = useCallback((updated: TaggedPhoto) => {
+    setCards(prev => prev.map(c => (c.photo.id === updated.photo.id ? updated : c)));
+    scanningService.updateCard(updated);
+  }, []);
 
   useEffect(() => {
     // Only go to done when scan is also finished — there may be more cards coming
@@ -339,6 +356,7 @@ export default function HomeScreen() {
               stackIndex={offset}
               onSwipeRight={() => handleSwipeRight(cards[ci])}
               onSwipeLeft={() => handleSwipeLeft(cards[ci])}
+              onEdit={handleEditCard}
             />
           );
         })}

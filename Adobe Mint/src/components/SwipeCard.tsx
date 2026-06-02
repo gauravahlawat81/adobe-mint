@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import type { TaggedPhoto } from '../types';
+import { EditableText, KeywordsEditor, CategoryPicker } from './EditableField';
+import type { TaggedPhoto, StockCategory } from '../types';
 
 const { width, height } = Dimensions.get('window');
 export const CARD_WIDTH  = width - spacing.lg * 2;
@@ -25,16 +26,36 @@ interface Props {
   stackIndex: number; // 0 = top, 1 = behind, 2 = further behind
   onSwipeLeft:  () => void;
   onSwipeRight: () => void;
+  onEdit?: (updated: TaggedPhoto) => void;
 }
 
-export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSwipeRight }: Props) {
+export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSwipeRight, onEdit }: Props) {
   const position = useRef(new Animated.ValueXY()).current;
+
+  // Keep latest values in refs so the (once-created) panResponder never reads stale closures.
+  // Without this, only the first card swipes — background cards capture isTop=false forever.
+  const isTopRef        = useRef(isTop);
+  const onSwipeRightRef = useRef(onSwipeRight);
+  const onSwipeLeftRef  = useRef(onSwipeLeft);
+  const editingRef      = useRef(false); // true while a field is being edited — disables swipe
+  isTopRef.current        = isTop;
+  onSwipeRightRef.current = onSwipeRight;
+  onSwipeLeftRef.current  = onSwipeLeft;
+
+  const swipeOut = (dir: 'left' | 'right') => {
+    const x = dir === 'right' ? width + 100 : -(width + 100);
+    Animated.timing(position, {
+      toValue: { x, y: 0 },
+      duration: SWIPE_OUT_DURATION,
+      useNativeDriver: true,
+    }).start(() => (dir === 'right' ? onSwipeRightRef.current() : onSwipeLeftRef.current()));
+  };
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isTop,
+      onStartShouldSetPanResponder: () => isTopRef.current && !editingRef.current,
       onMoveShouldSetPanResponder: (_e, gs) =>
-        isTop && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2,
+        isTopRef.current && !editingRef.current && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2,
       onPanResponderMove: (_e, gs) => {
         position.setValue({ x: gs.dx, y: gs.dy * 0.15 });
       },
@@ -53,15 +74,6 @@ export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSw
       },
     })
   ).current;
-
-  const swipeOut = (dir: 'left' | 'right') => {
-    const x = dir === 'right' ? width + 100 : -(width + 100);
-    Animated.timing(position, {
-      toValue: { x, y: 0 },
-      duration: SWIPE_OUT_DURATION,
-      useNativeDriver: true,
-    }).start(() => (dir === 'right' ? onSwipeRight() : onSwipeLeft()));
-  };
 
   const rotate = position.x.interpolate({
     inputRange: [-width / 2, 0, width / 2],
@@ -146,14 +158,34 @@ export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSw
         contentContainerStyle={styles.metaContent}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Category badge */}
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{tagged.category}</Text>
-        </View>
+        {/* Category — tap to change */}
+        <CategoryPicker
+          value={tagged.category}
+          onSave={(c: StockCategory) => onEdit?.({ ...tagged, category: c })}
+        />
 
-        <Text style={styles.title}>{tagged.title}</Text>
-        <Text style={styles.description}>{tagged.description}</Text>
+        {/* Title — tap to edit */}
+        <EditableText
+          value={tagged.title}
+          label="Title"
+          onSave={v => onEdit?.({ ...tagged, title: v })}
+          onEditingChange={e => { editingRef.current = e; }}
+          textStyle={styles.title}
+          placeholder="Add a title"
+        />
+
+        {/* Description — tap to edit */}
+        <EditableText
+          value={tagged.description}
+          label="Description"
+          onSave={v => onEdit?.({ ...tagged, description: v })}
+          onEditingChange={e => { editingRef.current = e; }}
+          multiline
+          textStyle={styles.description}
+          placeholder="Add a description"
+        />
 
         {/* Review notice */}
         {tagged.requiresReview && (
@@ -165,14 +197,12 @@ export default function SwipeCard({ tagged, isTop, stackIndex, onSwipeLeft, onSw
           </View>
         )}
 
-        {/* Keywords */}
-        <View style={styles.keywords}>
-          {tagged.keywords.slice(0, 10).map(kw => (
-            <View key={kw} style={styles.kwChip}>
-              <Text style={styles.kwText}>{kw}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Keywords — tap Edit to change */}
+        <KeywordsEditor
+          keywords={tagged.keywords}
+          onSave={kw => onEdit?.({ ...tagged, keywords: kw })}
+          onEditingChange={e => { editingRef.current = e; }}
+        />
       </ScrollView>
     </Animated.View>
   );
@@ -191,6 +221,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 8,
+  },
+  meta: {
+    padding: spacing.md,
   },
   topCard: {
     zIndex: 20,

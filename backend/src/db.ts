@@ -36,9 +36,18 @@ export async function initDb() {
       downloads       INTEGER NOT NULL DEFAULT 0,
       requires_review BOOLEAN NOT NULL DEFAULT FALSE,
       review_reason   TEXT,
+      photo_hash      TEXT,
       submitted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       reviewed_at     TIMESTAMPTZ
     );
+
+    -- Idempotent migration for existing deployments
+    ALTER TABLE submissions ADD COLUMN IF NOT EXISTS photo_hash TEXT;
+
+    -- Prevent the same user from uploading the same photo twice.
+    -- NULL photo_hash rows (legacy) are allowed multiple times by Postgres.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_submissions_user_photo_hash
+      ON submissions (user_id, photo_hash);
   `);
   console.log('Database ready');
 }
@@ -71,17 +80,51 @@ export async function createSubmission(sub: {
   thumbnail_uri: string | null;
   requires_review: boolean;
   review_reason: string | null;
+  photo_hash: string | null;
 }) {
   await pool.query(
     `INSERT INTO submissions
-       (id, user_id, title, description, keywords, category, status, thumbnail_uri, requires_review, review_reason)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+       (id, user_id, title, description, keywords, category, status, thumbnail_uri, requires_review, review_reason, photo_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [
       sub.id, sub.user_id, sub.title, sub.description,
       JSON.stringify(sub.keywords), sub.category, sub.status,
-      sub.thumbnail_uri, sub.requires_review, sub.review_reason,
+      sub.thumbnail_uri, sub.requires_review, sub.review_reason, sub.photo_hash,
     ]
   );
+}
+
+// Update editable metadata on a submission the user owns. Returns true if a row was updated.
+export async function updateSubmission(
+  id: string,
+  userId: string,
+  fields: { title: string; description: string; keywords: string[]; category: string }
+): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `UPDATE submissions
+       SET title = $1, description = $2, keywords = $3, category = $4
+     WHERE id = $5 AND user_id = $6`,
+    [fields.title, fields.description, JSON.stringify(fields.keywords), fields.category, id, userId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+// Delete a submission the user owns. Returns true if a row was deleted.
+export async function deleteSubmission(id: string, userId: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM submissions WHERE id = $1 AND user_id = $2`,
+    [id, userId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+// Returns all non-null photo hashes a user has already uploaded.
+export async function getSubmissionHashes(userId: string): Promise<string[]> {
+  const { rows } = await pool.query(
+    `SELECT photo_hash FROM submissions WHERE user_id = $1 AND photo_hash IS NOT NULL`,
+    [userId]
+  );
+  return rows.map(r => r.photo_hash);
 }
 
 export async function getSubmissions(userId: string) {
